@@ -32,6 +32,7 @@ namespace BookingApi.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
                 // Cấu hình RowVersion cho Optimistic Concurrency (chống nhiều người đặt cùng lúc)
                 entity.Property(e => e.RowVersion).IsRowVersion();
             });
@@ -40,6 +41,7 @@ namespace BookingApi.Data
             modelBuilder.Entity<Booking>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                entity.Property(e => e.TotalPrice).HasPrecision(18, 2);
                 entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
                 
                 // Mối quan hệ Booking - User (1 User có nhiều Bookings)

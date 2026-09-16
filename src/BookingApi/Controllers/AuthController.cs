@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using BookingApi.Data;
 using BookingApi.Models.DTOs;
 using BookingApi.Models.Responses;
+using Microsoft.AspNetCore.Authorization;
 
 namespace BookingApi.Controllers
 {
@@ -29,8 +30,9 @@ namespace BookingApi.Controllers
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto request)
     {
-      // So sánh mật khẩu (Đáng lẽ phải so sánh mã Hash, ở đây làm nhanh cho MVP)
-      var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username && u.PasswordHash == request.Password);
+      var account = string.IsNullOrEmpty(request.Username) ? request.Email : request.Username;
+      var user = await _context.Users.FirstOrDefaultAsync(u => 
+        (u.Username == account || u.Email == account) && u.PasswordHash == request.Password);
 
       if (user == null)
       {
@@ -52,7 +54,7 @@ namespace BookingApi.Controllers
         Username = request.Username,
         PasswordHash = request.Password,
         Role = "User",
-        Email = request.Username + "@test.com",
+        Email = string.IsNullOrEmpty(request.Email) ? request.Username : request.Email,
         CompanyName = request.CompanyName,
         Department = request.Department,
       };
@@ -60,6 +62,27 @@ namespace BookingApi.Controllers
       _context.Users.Add(user);
       await _context.SaveChangesAsync();
       return Ok(ApiResponse<string>.SuccessResult(user.Id.ToString(), "Đăng ký thành công!"));
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> GetProfile()
+    {
+      var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+      if (!Guid.TryParse(userIdString, out Guid userId)) return Unauthorized();
+
+      var user = await _context.Users.FindAsync(userId);
+      if (user == null) return NotFound(ApiResponse<object>.ErrorResult("Không tìm thấy thông tin người dùng."));
+
+      return Ok(ApiResponse<object>.SuccessResult(new
+      {
+        user.Id,
+        user.Username,
+        user.Email,
+        user.CompanyName,
+        user.Department,
+        user.Role
+      }, "Lấy thông tin cá nhân thành công."));
     }
 
     private string GenerateJwtToken(Models.Entities.User user)

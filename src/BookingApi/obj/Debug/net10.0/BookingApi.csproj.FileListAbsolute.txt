@@ -168,3 +168,4 @@ D:\Booking-app\src\BookingApi\obj\Debug\net10.0\BookingApi.genruntimeconfig.cach
 D:\Booking-app\src\BookingApi\obj\Debug\net10.0\ref\BookingApi.dll
 D:\Booking-app\src\BookingApi\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
 D:\Booking-app\src\BookingApi\bin\Debug\net10.0\Microsoft.Bcl.Cryptography.dll
+D:\Booking-app\src\BookingApi\obj\Debug\net10.0\BookingApi.sourcelink.json

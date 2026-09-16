@@ -64,7 +64,7 @@ namespace BookingApi.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Bookings");
+                    b.ToTable("Bookings", (string)null);
                 });
 
             modelBuilder.Entity("BookingApi.Models.Entities.Room", b =>
@@ -115,7 +115,7 @@ namespace BookingApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Rooms");
+                    b.ToTable("Rooms", (string)null);
                 });
 
             modelBuilder.Entity("BookingApi.Models.Entities.User", b =>
@@ -156,7 +156,7 @@ namespace BookingApi.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("BookingApi.Models.Entities.Booking", b =>
