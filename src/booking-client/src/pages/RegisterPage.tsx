@@ -1,54 +1,194 @@
-import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import { Mail, Lock, UserPlus, User } from 'lucide-react';
+import { Link, useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import { Mail, Lock, UserPlus, Building, Briefcase } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { API_BASE_URL } from "../config/api";
+
+interface RegisterFormData {
+  companyName: string;
+  department: string;
+  email: string;
+  password: string;
+}
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
+  const [errorMsg, setErrorMsg] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>();
+
+  const onSubmit = async (data: RegisterFormData) => {
+    setErrorMsg("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/Auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: data.email,
+          password: data.password,
+          email: data.email,
+          companyName: data.companyName,
+          department: data.department,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        setErrorMsg(result.message || "Đăng ký thất bại.");
+        return;
+      }
+
+      alert("Đăng ký tài khoản doanh nghiệp thành công!");
+      navigate("/login");
+    } catch (err) {
+      setErrorMsg("Lỗi kết nối đến server.");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-[#faf8f5] flex flex-col text-stone-800">
       <Navbar />
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg border-t-4 border-[#d4af37]">
-          <h2 className="text-3xl font-serif font-bold mb-6 text-center text-[#0f172a]">Tài khoản Doanh nghiệp</h2>
-          <form className="flex flex-col gap-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tên công ty</label>
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-[0_8px_32px_rgba(15,23,42,0.06)] w-full max-w-lg border border-stone-200/90">
+          <div className="text-center mb-6">
+            <span className="text-[10px] uppercase font-semibold tracking-[0.2em] text-[#a67c2e] block mb-1">
+              Gia Nhập Mạng Lưới
+            </span>
+            <h2 className="text-3xl font-serif font-normal text-stone-900 tracking-tight">
+              Tài Khoản Doanh Nghiệp
+            </h2>
+            <p className="text-xs text-stone-500 mt-1 font-light">
+              Đăng ký thành viên để linh hoạt đặt lịch họp và hưởng chính sách tối ưu
+            </p>
+          </div>
+
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            {errorMsg && (
+              <div className="bg-red-50/90 text-red-700 p-3 rounded-xl border border-red-200/90 text-xs text-center">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-stone-700 mb-1">
+                  Tên Công Ty / Doanh Nghiệp
+                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User size={18} className="text-[#d4af37]" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Building size={16} className="text-[#c59b48]" />
                   </div>
-                  <input type="text" className="pl-10 w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37]" placeholder="Tên công ty" />
+                  <input
+                    type="text"
+                    {...register("companyName", {
+                      required: "Vui lòng nhập tên công ty",
+                    })}
+                    className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                    placeholder="Tập đoàn ABC"
+                  />
                 </div>
+                {errors.companyName && (
+                  <span className="text-[11px] text-red-600 mt-1 block">
+                    {errors.companyName.message as string}
+                  </span>
+                )}
               </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phòng ban</label>
-                <input type="text" className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37] pl-3" placeholder="Phòng ban" />
+
+              <div>
+                <label className="block text-xs font-medium text-stone-700 mb-1">
+                  Khối / Phòng Ban
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Briefcase size={16} className="text-[#c59b48]" />
+                  </div>
+                  <input
+                    type="text"
+                    {...register("department", {
+                      required: "Vui lòng nhập phòng ban",
+                    })}
+                    className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                    placeholder="Khối Điều Hành"
+                  />
+                </div>
+                {errors.department && (
+                  <span className="text-[11px] text-red-600 mt-1 block">
+                    {errors.department.message as string}
+                  </span>
+                )}
               </div>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-xs font-medium text-stone-700 mb-1">
+                Email Doanh Nghiệp
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-[#d4af37]" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Mail size={16} className="text-[#c59b48]" />
                 </div>
-                <input type="email" className="pl-10 w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37]" placeholder="email@company.com" />
+                <input
+                  type="email"
+                  {...register("email", { required: "Vui lòng nhập email" })}
+                  className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                  placeholder="contact@company.com"
+                />
               </div>
+              {errors.email && (
+                <span className="text-[11px] text-red-600 mt-1 block">
+                  {errors.email.message as string}
+                </span>
+              )}
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+              <label className="block text-xs font-medium text-stone-700 mb-1">
+                Mật Khẩu Khởi Tạo
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-[#d4af37]" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock size={16} className="text-[#c59b48]" />
                 </div>
-                <input type="password" className="pl-10 w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37]" placeholder="••••••••" />
+                <input
+                  type="password"
+                  {...register("password", {
+                    required: "Vui lòng nhập mật khẩu",
+                  })}
+                  className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                  placeholder="••••••••"
+                />
               </div>
+              {errors.password && (
+                <span className="text-[11px] text-red-600 mt-1 block">
+                  {errors.password.message as string}
+                </span>
+              )}
             </div>
-            <button type="button" className="bg-[#0f172a] text-[#d4af37] py-3 rounded-md font-bold mt-4 hover:bg-[#1e293b] transition flex justify-center items-center gap-2 border border-[#0f172a]">
-              <UserPlus size={20} /> Đăng ký
+
+            <button
+              type="submit"
+              className="bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] hover:text-white py-3 rounded-xl font-medium text-xs tracking-wide mt-2 transition duration-200 flex justify-center items-center gap-2 shadow-sm cursor-pointer active:scale-[0.99]"
+            >
+              <UserPlus size={15} /> 
+              <span>Đăng Ký Thành Viên</span>
             </button>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600 border-t border-gray-100 pt-4">
-            Đã có tài khoản? <Link to="/login" className="text-[#d4af37] font-semibold hover:underline">Đăng nhập</Link>
+
+          <p className="mt-6 text-center text-xs text-stone-500 border-t border-stone-100 pt-4 font-light">
+            Đã có tài khoản doanh nghiệp?{" "}
+            <Link
+              to="/login"
+              className="text-[#a67c2e] hover:text-[#c59b48] font-medium ml-1 transition"
+            >
+              Đăng nhập
+            </Link>
           </p>
         </div>
       </div>

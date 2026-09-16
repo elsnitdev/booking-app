@@ -1,39 +1,145 @@
-import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { Link, useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
+import { Mail, Lock, LogIn } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { API_BASE_URL } from "../config/api";
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 export default function LoginPage() {
+  const navigate = useNavigate();
+  const [errorMsg, setErrorMsg] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>();
+
+  const onSubmit = async (data: LoginFormData) => {
+    setErrorMsg("");
+    try {
+      const response = await fetch(`${API_BASE_URL}/Auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: data.email,
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        setErrorMsg(result.message || "Sai tài khoản hoặc mật khẩu.");
+        return;
+      }
+
+      // Lưu JWT token vào localStorage
+      if (result.data) {
+        localStorage.setItem("token", result.data);
+      }
+
+      alert("Đăng nhập thành công!");
+      navigate("/");
+    } catch (err) {
+      setErrorMsg("Lỗi kết nối đến server.");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-[#faf8f5] flex flex-col text-stone-800">
       <Navbar />
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md border-t-4 border-[#d4af37]">
-          <h2 className="text-3xl font-serif font-bold mb-6 text-center text-[#0f172a]">Đăng nhập</h2>
-          <form className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email / Tài khoản</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-[#d4af37]" />
-                </div>
-                <input type="text" className="pl-10 w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37]" placeholder="Nhập email doanh nghiệp..." />
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-[0_8px_32px_rgba(15,23,42,0.06)] w-full max-w-md border border-stone-200/90">
+          <div className="text-center mb-6">
+            <span className="text-[10px] uppercase font-semibold tracking-[0.2em] text-[#a67c2e] block mb-1">
+              Cổng Thành Viên
+            </span>
+            <h2 className="text-3xl font-serif font-normal text-stone-900 tracking-tight">
+              Đăng Nhập
+            </h2>
+            <p className="text-xs text-stone-500 mt-1 font-light">
+              Truy cập tài khoản doanh nghiệp và quản lý lịch họp
+            </p>
+          </div>
+
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            {errorMsg && (
+              <div className="bg-red-50/90 border border-red-200/90 text-red-700 p-3 rounded-xl text-xs text-center">
+                {errorMsg}
               </div>
-            </div>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+              <label className="block text-xs font-medium text-stone-700 mb-1">
+                Email Doanh Nghiệp
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-[#d4af37]" />
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Mail size={16} className="text-[#c59b48]" />
                 </div>
-                <input type="password" className="pl-10 w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#d4af37]" placeholder="••••••••" />
+                <input
+                  type="text"
+                  className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                  placeholder="contact@company.com"
+                  {...register("email", { required: "Vui lòng nhập email" })}
+                />
               </div>
+              {errors.email && (
+                <span className="text-[11px] text-red-600 mt-1 block">
+                  {errors.email.message}
+                </span>
+              )}
             </div>
-            <button type="button" className="bg-[#0f172a] text-[#d4af37] py-3 rounded-md font-bold mt-4 hover:bg-[#1e293b] transition flex justify-center items-center gap-2 border border-[#0f172a]">
-              <LogIn size={20} /> Đăng nhập
+
+            <div>
+              <label className="block text-xs font-medium text-stone-700 mb-1">
+                Mật Khẩu
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock size={16} className="text-[#c59b48]" />
+                </div>
+                <input
+                  type="password"
+                  className="pl-10 w-full py-2.5 px-3.5 text-xs bg-stone-50/50 border border-stone-200/90 rounded-xl outline-none focus:border-[#c59b48] focus:bg-white transition text-stone-800"
+                  placeholder="••••••••"
+                  {...register("password", {
+                    required: "Vui lòng nhập mật khẩu",
+                  })}
+                />
+              </div>
+              {errors.password && (
+                <span className="text-[11px] text-red-600 mt-1 block">
+                  {errors.password.message}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] hover:text-white py-3 rounded-xl font-medium text-xs tracking-wide mt-2 transition duration-200 flex justify-center items-center gap-2 shadow-sm cursor-pointer active:scale-[0.99]"
+            >
+              <LogIn size={15} /> 
+              <span>Đăng Nhập</span>
             </button>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600 border-t border-gray-100 pt-4">
-            Chưa có tài khoản? <Link to="/register" className="text-[#d4af37] font-semibold hover:underline">Đăng ký ngay</Link>
+
+          <p className="mt-6 text-center text-xs text-stone-500 border-t border-stone-100 pt-4 font-light">
+            Chưa có tài khoản doanh nghiệp?{" "}
+            <Link
+              to="/register"
+              className="text-[#a67c2e] hover:text-[#c59b48] font-medium ml-1 transition"
+            >
+              Đăng ký ngay
+            </Link>
           </p>
         </div>
       </div>

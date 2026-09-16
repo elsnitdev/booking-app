@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cẩm Nang Entity Framework Core: Code-First, Cấu Hình & Quy Trình Migration</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .tab-btn.active {
+      background: #4f46e5;
+      color: #ffffff;
+      border-color: #4f46e5;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .subtab-btn.active {
+      background: #0f172a;
+      color: #38bdf8;
+      border-color: #38bdf8;
+    }
+    .flow-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flow-card:hover {
+      transform: translateY(-4px);
+    }
+    pre code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased font-sans pb-16">
+
+  <!-- Header Banner -->
+  <header class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border-b border-indigo-500/20 py-12 px-4 shadow-xl">
+    <div class="max-w-6xl mx-auto">
+      <div class="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase border border-indigo-400/30 mb-4">
+        <span>.NET 9/10 & Entity Framework Core</span>
+      </div>
+      <h1 class="text-3xl md:text-5xl font-black tracking-tight mb-4 text-white">
+        Toàn Diện Về <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-amber-300">Entity Framework Core</span>
+      </h1>
+      <p class="text-slate-300 text-base md:text-lg max-w-3xl leading-relaxed">
+        Hướng dẫn chuyên sâu từ kiến trúc ORM, so sánh các phương pháp tiếp cận đến <strong class="text-emerald-300">Cấu Hình Code-First Chi Tiết</strong> và <strong class="text-amber-300">Toàn Tập Quy Trình Build & Chạy Migration</strong> trong thực tế.
+      </p>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <div class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 py-3 px-4 shadow-sm mb-10">
+    <div class="max-w-6xl mx-auto flex flex-wrap gap-2 md:gap-3 items-center justify-between">
+      <span class="text-xs font-bold uppercase tracking-wider text-slate-500 hidden sm:inline">Chủ đề:</span>
+      <div class="flex flex-wrap gap-2">
+        <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          1. Tổng Quan EF
+        </button>
+        <button onclick="switchTab('codefirst')" id="tab-codefirst" class="tab-btn active px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          2. Cấu Hình & Chạy Code-First ★
+        </button>
+        <button onclick="switchTab('dbfirst')" id="tab-dbfirst" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          3. Database-First
+        </button>
+        <button onclick="switchTab('modelfirst')" id="tab-modelfirst" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          4. Model-First (Cũ)
+        </button>
+        <button onclick="switchTab('comparison')" id="tab-comparison" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold border border-slate-200 text-slate-700 hover:bg-slate-100 transition cursor-pointer">
+          5. So Sánh & Chọn Lựa
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <main class="max-w-6xl mx-auto px-4 space-y-12">
+
+    <!-- TAB 1: TỔNG QUAN EF -->
+    <section id="content-overview" class="space-y-8 hidden">
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-4 flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-base font-black">1</span>
+          Entity Framework (EF) Là Gì?
+        </h2>
+        <p class="text-slate-600 text-base leading-relaxed mb-6">
+          <strong>Entity Framework (EF Core)</strong> là bộ công cụ <strong>ORM (Object-Relational Mapper)</strong> hàng đầu của Microsoft dành cho nền tảng .NET. Nó đóng vai trò là "cầu nối" giúp lập trình viên thao tác với cơ sở dữ liệu quan hệ (SQL Server, PostgreSQL, MySQL...) hoàn toàn bằng các <strong>đối tượng C# (Object)</strong> và câu lệnh <strong>LINQ</strong> mà không cần viết các câu lệnh SQL thô phức tạp.
+        </p>
+
+        <!-- Diagram: ORM Architecture -->
+        <div class="bg-slate-900 rounded-xl p-6 text-white border border-slate-800 shadow-inner">
+          <div class="text-center mb-6">
+            <span class="text-xs uppercase font-bold text-indigo-400 tracking-wider">Mô Hình Hoạt Động Của Entity Framework</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <!-- C# App -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
+              <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-lg mx-auto flex items-center justify-center mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+              </div>
+              <h4 class="font-bold text-lg text-white mb-1">Ứng Dụng .NET / C#</h4>
+              <p class="text-xs text-slate-400">Class Entity: <code class="text-amber-300">Room</code>, <code class="text-amber-300">User</code></p>
+              <p class="text-xs text-slate-400 mt-1">Truy vấn: <code class="text-emerald-300">_context.Rooms.Where(...)</code></p>
+            </div>
+
+            <!-- EF Core Middle -->
+            <div class="bg-indigo-900/60 border-2 border-indigo-500 rounded-xl p-5 text-center relative">
+              <div class="w-12 h-12 bg-indigo-500 text-white rounded-lg mx-auto flex items-center justify-center mb-3 shadow-lg shadow-indigo-500/50">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+              </div>
+              <h4 class="font-bold text-lg text-indigo-200 mb-1">Entity Framework Core</h4>
+              <ul class="text-xs text-slate-300 space-y-1 mt-2 text-left bg-slate-950/40 p-3 rounded-lg">
+                <li>✔ <strong>DbContext:</strong> Quản lý kết nối & phiên làm việc</li>
+                <li>✔ <strong>LINQ Provider:</strong> Biên dịch C# thành SQL</li>
+                <li>✔ <strong>Change Tracker:</strong> Theo dõi thêm/sửa/xóa</li>
+              </ul>
+            </div>
+
+            <!-- Database -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
+              <div class="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-lg mx-auto flex items-center justify-center mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+              </div>
+              <h4 class="font-bold text-lg text-white mb-1">Cơ Sở Dữ Liệu Quan Hệ</h4>
+              <p class="text-xs text-slate-400">SQL Server, PostgreSQL, MySQL, SQLite</p>
+              <p class="text-xs text-slate-400 mt-1">Bảng: <code class="text-amber-300">[Rooms]</code>, <code class="text-amber-300">[Users]</code></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+            <h5 class="font-bold text-indigo-950 mb-1 text-sm">Tăng Tốc Độ Phát Triển</h5>
+            <p class="text-xs text-slate-600">Không cần viết boilerplate code đọc `SqlDataReader`, tự động map dữ liệu vào object C#.</p>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 rounded-xl p-4">
+            <h5 class="font-bold text-amber-950 mb-1 text-sm">An Toàn Kiểu (Type-Safe)</h5>
+            <p class="text-xs text-slate-600">Mọi thuộc tính đều được IDE kiểm tra cú pháp ngay lúc gõ code thay vì runtime lỗi.</p>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+            <h5 class="font-bold text-emerald-950 mb-1 text-sm">Chống SQL Injection</h5>
+            <p class="text-xs text-slate-600">EF tự động tham số hóa (parameterize) mọi biến trong LINQ, bảo vệ an toàn tối đa cho DB.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: CODE-FIRST & MIGRATION DEEP DIVE (TRỌNG TÂM CẦN BỔ SUNG) -->
+    <section id="content-codefirst" class="space-y-10">
+      
+      <!-- PHẦN A: CÁCH CẤU HÌNH CODE-FIRST -->
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-base font-black">2A</span>
+            Hướng Dẫn Cấu Hình Code-First Chi Tiết (Từng Bước)
+          </h2>
+          <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300">
+            Cốt Lõi Hệ Thống Booking-App
+          </span>
+        </div>
+
+        <p class="text-slate-600 text-base leading-relaxed mb-6">
+          Để cấu hình một dự án .NET theo chuẩn <strong>Code-First</strong>, hệ thống trải qua 4 bước thiết lập cấu hình cốt lõi dưới đây:
+        </p>
+
+        <!-- Stepper 4 Bước Cấu Hình -->
+        <div class="space-y-6">
+
+          <!-- Bước 1: Cài đặt NuGet Packages -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/70">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+              <h3 class="text-base font-bold text-slate-900">Cài Đặt Các Gói NuGet & Công Cụ EF Core CLI</h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">
+              Mở Terminal tại thư mục project API (<code class="bg-slate-200 px-1 py-0.5 rounded">src/BookingApi</code>) và cài đặt 3 gói bắt buộc:
+            </p>
+            <div class="bg-slate-950 text-emerald-400 p-3 rounded-lg font-mono text-xs overflow-x-auto space-y-1">
+              <div><span class="text-slate-500"># 1. Driver kết nối SQL Server</span><br>dotnet add package Microsoft.EntityFrameworkCore.SqlServer</div>
+              <div><span class="text-slate-500"># 2. Bộ công cụ tạo Migration và Scaffold</span><br>dotnet add package Microsoft.EntityFrameworkCore.Tools</div>
+              <div><span class="text-slate-500"># 3. Cài đặt công cụ dòng lệnh dotnet-ef toàn cục trên máy tính</span><br>dotnet tool install --global dotnet-ef</div>
+            </div>
+          </div>
+
+          <!-- Bước 2: Chuỗi Kết Nối appsettings.json -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/70">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+              <h3 class="text-base font-bold text-slate-900">Cấu Hình Chuỗi Kết Nối (Connection String) Trong <code class="text-indigo-600">appsettings.json</code></h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">
+              Khai báo kết nối đến máy chủ SQL Server của bạn. Cấu hình thực tế trong file <code class="bg-slate-200 px-1 py-0.5 rounded">src/BookingApi/appsettings.json</code>:
+            </p>
+            <div class="bg-slate-950 text-slate-200 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              <pre><code>{
+  <span class="text-amber-300">"ConnectionStrings"</span>: {
+    <span class="text-indigo-400">"DefaultConnection"</span>: <span class="text-emerald-400">"Server=localhost;Database=BookingSystemDb;Trusted_Connection=True;TrustServerCertificate=True;"</span>
+  }
+}</code></pre>
+            </div>
+            <div class="mt-2 text-[11px] text-slate-500 flex items-center gap-2">
+              <span class="text-amber-500 font-bold">💡 Gợi ý:</span>
+              <span><code class="text-slate-700 font-mono">TrustServerCertificate=True</code> giúp tránh lỗi từ chối chứng chỉ SSL khi kết nối trên môi trường local.</span>
+            </div>
+          </div>
+
+          <!-- Bước 3: Đăng Ký DbContext trong Program.cs -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/70">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+              <h3 class="text-base font-bold text-slate-900">Đăng Ký DbContext Vào Dependency Injection Trong <code class="text-indigo-600">Program.cs</code></h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">
+              Thông báo cho ứng dụng biết sử dụng <code class="bg-slate-200 px-1 py-0.5 rounded">AppDbContext</code> và kết nối với nhà cung cấp SQL Server:
+            </p>
+            <div class="bg-slate-950 text-slate-200 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              <pre><code><span class="text-purple-400">var</span> builder = WebApplication.CreateBuilder(args);
+
+<span class="text-slate-500">// Đăng ký AppDbContext với vòng đời Scoped tự động</span>
+builder.Services.AddDbContext&lt;<span class="text-amber-300">AppDbContext</span>&gt;(options =&gt;
+    options.UseSqlServer(builder.Configuration.GetConnectionString(<span class="text-emerald-400">"DefaultConnection"</span>)));</code></pre>
+            </div>
+          </div>
+
+          <!-- Bước 4: Tạo Entity & Cấu hình Mapping (Fluent API) -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/70">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="w-7 h-7 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+              <h3 class="text-base font-bold text-slate-900">Xây Dựng Entity & Cấu Hình Fluent API Trong <code class="text-indigo-600">AppDbContext.cs</code></h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-3">
+              Có 2 cách để cấu hình bảng: <strong>Data Annotations</strong> (đặt attribute trực tiếp trên property) và <strong>Fluent API</strong> (khuyên dùng trong <code class="bg-slate-200 px-1 py-0.5 rounded">OnModelCreating</code> vì không làm bẩn class Entity và hỗ trợ cấu hình nâng cao):
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <!-- C# Entity -->
+              <div class="bg-slate-900 p-3 rounded-lg text-xs font-mono text-slate-200 overflow-x-auto">
+                <span class="text-indigo-400 font-bold block mb-2">// 1. Entity C# thuần (POCO)</span>
+                <pre><code><span class="text-purple-400">public class</span> <span class="text-amber-300">Room</span>
+{
+    <span class="text-purple-400">public</span> <span class="text-blue-400">Guid</span> Id { <span class="text-purple-400">get; set;</span> }
+    <span class="text-purple-400">public string</span> Name { <span class="text-purple-400">get; set;</span> }
+    <span class="text-purple-400">public decimal</span> HourlyRate { <span class="text-purple-400">get; set;</span> }
+    
+    <span class="text-slate-500">// Token chống xung đột đặt phòng đồng thời</span>
+    <span class="text-purple-400">public byte</span>[] RowVersion { <span class="text-purple-400">get; set;</span> }
+    
+    <span class="text-purple-400">public</span> ICollection&lt;<span class="text-amber-300">Booking</span>&gt; Bookings { <span class="text-purple-400">get; set;</span> }
+}</code></pre>
+              </div>
+
+              <!-- Fluent API -->
+              <div class="bg-slate-900 p-3 rounded-lg text-xs font-mono text-slate-200 overflow-x-auto">
+                <span class="text-emerald-400 font-bold block mb-2">// 2. Fluent API trong AppDbContext.cs</span>
+                <pre><code><span class="text-purple-400">protected override void</span> OnModelCreating(<span class="text-amber-300">ModelBuilder</span> modelBuilder)
+{
+    modelBuilder.Entity&lt;<span class="text-amber-300">Room</span>&gt;(entity =&gt;
+    {
+        entity.HasKey(e =&gt; e.Id);
+        entity.Property(e =&gt; e.Name).IsRequired().HasMaxLength(100);
+        entity.Property(e =&gt; e.HourlyRate).HasPrecision(18, 2);
+        
+        <span class="text-slate-500">// Cấu hình Optimistic Concurrency</span>
+        entity.Property(e =&gt; e.RowVersion).IsRowVersion();
+    });
+}</code></pre>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PHẦN B: TOÀN TẬP QUY TRÌNH BUILD & CHẠY MIGRATION -->
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center text-base font-black">2B</span>
+            Quy Trình Run & Build Migration Toàn Tập (Từ A Đến Z)
+          </h2>
+          <span class="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full border border-amber-300">
+            Quản Lý Lịch Sử Database
+          </span>
+        </div>
+
+        <p class="text-slate-600 text-base leading-relaxed mb-6">
+          Migration là cơ chế ghi lại từng "bước tiến hóa" của cơ sở dữ liệu giống như các commit trong Git. Khi bạn thêm/sửa thuộc tính trong C#, bạn cần chạy quy trình build và update migration theo các bước sau:
+        </p>
+
+        <!-- Sơ Đồ Cơ Chế Migration Hoạt Động -->
+        <div class="bg-slate-900 rounded-xl p-6 text-white border border-slate-800 shadow-md mb-8">
+          <div class="text-center mb-6">
+            <span class="text-xs uppercase font-bold text-amber-400 tracking-wider">Cơ Chế EF So Sánh & Thực Thi Migration</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+              <span class="text-amber-300 font-bold text-sm block mb-1">1. ModelSnapshot.cs</span>
+              <p class="text-xs text-slate-400">Bản chụp trạng thái hiện tại của toàn bộ model C#.</p>
+              <div class="text-[10px] bg-slate-950 text-indigo-300 p-2 mt-2 rounded font-mono">So sánh với code mới</div>
+            </div>
+
+            <div class="bg-indigo-950/80 p-4 rounded-xl border-2 border-indigo-400">
+              <span class="text-emerald-300 font-bold text-sm block mb-1">2. File Migration (.cs)</span>
+              <p class="text-xs text-slate-300">Sinh ra hàm <strong class="text-emerald-400">Up()</strong> (khi nâng cấp) và <strong class="text-rose-400">Down()</strong> (khi rollback).</p>
+              <div class="text-[10px] bg-slate-950 text-amber-300 p-2 mt-2 rounded font-mono">dotnet ef migrations add</div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+              <span class="text-blue-300 font-bold text-sm block mb-1">3. [__EFMigrationsHistory]</span>
+              <p class="text-xs text-slate-400">Bảng ngầm trong SQL Server lưu danh sách các migration đã chạy.</p>
+              <div class="text-[10px] bg-slate-950 text-blue-300 p-2 mt-2 rounded font-mono">dotnet ef database update</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cẩm nang lệnh CLI đầy đủ -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-bold text-slate-900 mb-2">Bảng Tra Cứu Toàn Bộ Lệnh Migration Thường Dùng:</h3>
+
+          <!-- Lệnh 1: Build & Add Migration -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <span class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Bước 1: Build & Tạo Migration Mới
+              </span>
+              <span class="text-[11px] text-slate-500 font-mono">Terminal: src/BookingApi</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-2">
+              Trước khi tạo migration, EF sẽ tự động biên dịch (build) dự án. Nếu code có lỗi cú pháp, lệnh sẽ dừng lại.
+            </p>
+            <div class="bg-slate-950 text-emerald-400 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              dotnet ef migrations add TenMigrationMoi
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">
+              Ví dụ trong dự án của bạn: <code class="font-mono text-slate-700">dotnet ef migrations add MeetingRoomPivot</code>
+            </p>
+          </div>
+
+          <!-- Lệnh 2: Update Database -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <span class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Bước 2: Đẩy Thay Đổi Xuống SQL Server
+              </span>
+              <span class="text-[11px] text-slate-500 font-mono">Áp dụng schema</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-2">
+              EF đọc bảng <code class="font-mono text-slate-700">__EFMigrationsHistory</code> trên SQL Server và chỉ chạy các lệnh SQL của những migration chưa có.
+            </p>
+            <div class="bg-slate-950 text-blue-400 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              dotnet ef database update
+            </div>
+          </div>
+
+          <!-- Lệnh 3: Xem danh sách migration -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <span class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Bước 3: Kiểm Tra Tình Trạng Các Migration
+              </span>
+              <span class="text-[11px] text-slate-500 font-mono">Xem trạng thái</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-2">
+              Hiển thị danh sách các migration đã được apply vào database và migration nào còn đang chờ (Pending):
+            </p>
+            <div class="bg-slate-950 text-indigo-400 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              dotnet ef migrations list
+            </div>
+          </div>
+
+          <!-- Lệnh 4: Xóa / Hủy Migration khi gõ nhầm -->
+          <div class="border border-rose-200 rounded-xl p-4 bg-rose-50/40">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <span class="font-bold text-sm text-rose-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span> Xử Lý Sự Cố: Rollback / Hủy Bỏ Migration Sai
+              </span>
+              <span class="text-[11px] text-rose-700 font-bold">Cực kỳ quan trọng</span>
+            </div>
+            <div class="space-y-3 text-xs text-slate-700">
+              <div>
+                <strong>Trường hợp 1:</strong> Bạn vừa chạy <code class="font-mono bg-white px-1 border">add</code> nhưng <em>chưa</em> chạy <code class="font-mono bg-white px-1 border">update</code>:
+                <div class="bg-slate-950 text-amber-300 p-2 rounded font-mono mt-1">dotnet ef migrations remove</div>
+                <span class="text-[11px] text-slate-500">Lệnh này sẽ xóa file migration vừa tạo ra một cách an toàn.</span>
+              </div>
+
+              <div>
+                <strong>Trường hợp 2:</strong> Bạn đã lỡ chạy <code class="font-mono bg-white px-1 border">database update</code> rồi nhưng muốn rút lại:
+                <div class="bg-slate-950 text-rose-300 p-2 rounded font-mono mt-1 space-y-1">
+                  <div><span class="text-slate-500"># B1: Quay lui database về migration trước đó</span><br>dotnet ef database update TenMigrationPhiaTruoc</div>
+                  <div><span class="text-slate-500"># B2: Bây giờ mới xóa file migration</span><br>dotnet ef migrations remove</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lệnh 5: Xuất Script SQL cho Production -->
+          <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <span class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span> Nâng Cao: Xuất File SQL Để Đưa Lên Server Thật (CI/CD)
+              </span>
+              <span class="text-[11px] text-purple-700 font-semibold">Production Ready</span>
+            </div>
+            <p class="text-xs text-slate-600 mb-2">
+              Khi deploy lên server thật, DBA thường không cho chạy lệnh CLI. Bạn có thể xuất ra file script SQL tự động kiểm tra bảng:
+            </p>
+            <div class="bg-slate-950 text-purple-300 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+              dotnet ef migrations script -i -o deploy_script.sql
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1">
+              Cờ <code class="font-mono text-slate-700">-i</code> (Idempotent) đảm bảo script có lệnh kiểm tra <code class="font-mono text-slate-700">IF NOT EXISTS</code> an toàn khi chạy nhiều lần.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 3: DATABASE-FIRST -->
+    <section id="content-dbfirst" class="space-y-8 hidden">
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-base font-black">3</span>
+            Phương Pháp Database-First (Reverse Engineering)
+          </h2>
+          <span class="bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full border border-indigo-300">
+            Dành Cho Dự Án Đã Có Sẵn Cơ Sở Dữ Liệu
+          </span>
+        </div>
+
+        <p class="text-slate-600 text-base leading-relaxed mb-6">
+          Với <strong>Database-First</strong>, quy trình đi ngược lại hoàn toàn: Cơ sở dữ liệu đã tồn tại từ trước (được thiết kế bằng SSMS, Oracle, MySQL...). Bạn sử dụng công cụ dòng lệnh của EF Core để quét schema database và <strong>tự động sinh ngược ra (scaffold)</strong> các file C# Entity và DbContext.
+        </p>
+
+        <!-- Sơ đồ quy trình Database-First -->
+        <div class="bg-slate-900 rounded-xl p-6 text-white border border-slate-800 shadow-md mb-8">
+          <div class="text-center mb-6">
+            <span class="text-xs uppercase font-bold text-indigo-400 tracking-wider">Sơ Đồ Quy Trình Database-First (Reverse Engineering)</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <!-- Step 1: Existing DB -->
+            <div class="flow-card bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
+              <span class="w-7 h-7 rounded-full bg-indigo-500 text-white font-black text-xs flex items-center justify-center mx-auto mb-3">01</span>
+              <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-lg mx-auto flex items-center justify-center mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+              </div>
+              <h5 class="font-bold text-base text-white mb-1">Cơ Sở Dữ Liệu Đã Có Sẵn</h5>
+              <p class="text-xs text-slate-400">Các bảng, Views, Stored Procedures, Khóa ngoại đã được tạo bởi DBA trong SQL Server.</p>
+            </div>
+
+            <!-- Step 2: Scaffolding Tool -->
+            <div class="flow-card bg-indigo-950/80 border-2 border-indigo-500 rounded-xl p-5 text-center shadow-lg shadow-indigo-950">
+              <span class="w-7 h-7 rounded-full bg-indigo-400 text-slate-950 font-black text-xs flex items-center justify-center mx-auto mb-3">02</span>
+              <div class="w-12 h-12 bg-indigo-500 text-white rounded-lg mx-auto flex items-center justify-center mb-3 shadow-md">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+              </div>
+              <h5 class="font-bold text-base text-indigo-200 mb-1">Chạy Lệnh Scaffolding</h5>
+              <p class="text-xs text-slate-300 mb-2">EF Core CLI đọc metadata từ DB engine và dịch các bảng thành class C#.</p>
+              <code class="text-[10px] bg-slate-900 text-amber-300 px-2 py-1 rounded font-mono block">dotnet ef dbcontext scaffold</code>
+            </div>
+
+            <!-- Step 3: Generated C# -->
+            <div class="flow-card bg-slate-800 border border-slate-700 rounded-xl p-5 text-center">
+              <span class="w-7 h-7 rounded-full bg-indigo-500 text-white font-black text-xs flex items-center justify-center mx-auto mb-3">03</span>
+              <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-lg mx-auto flex items-center justify-center mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <h5 class="font-bold text-base text-white mb-1">Tự Động Sinh Code C#</h5>
+              <p class="text-xs text-slate-400">Sinh ra các file `Room.cs`, `Booking.cs` và `MyDbContext.cs` sẵn sàng để truy vấn bằng LINQ.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lệnh mẫu Database-First -->
+        <div class="bg-slate-900 rounded-xl p-5 text-slate-200 border border-slate-800 mb-6 font-mono text-xs">
+          <div class="text-slate-400 mb-2 font-bold flex items-center gap-2">
+            <svg class="w-4 h-4 text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M12.316 3.051a1 1 0 01.633 1.265l-4 12a1 1 0 11-1.898-.632l4-12a1 1 0 011.265-.633zM5.707 6.293a1 1 0 010 1.414L3.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zm8.586 0a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 11-1.414-1.414L16.586 10l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+            Lệnh Scaffold trong EF Core:
+          </div>
+          <div class="bg-black/50 p-3 rounded-lg text-emerald-400 select-all overflow-x-auto">
+dotnet ef dbcontext scaffold "Server=localhost;Database=BookingSystemDb;Trusted_Connection=True;TrustServerCertificate=True;" Microsoft.EntityFrameworkCore.SqlServer -o Models --context-dir Data --context AppDbContext
+          </div>
+        </div>
+
+        <!-- Ưu & Nhược điểm -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50">
+            <h5 class="font-bold text-indigo-900 text-sm mb-2">Ưu điểm của Database-First</h5>
+            <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+              <li>Hoàn hảo khi làm việc với hệ thống cũ (Legacy database) đã có sẵn hàng trăm bảng.</li>
+              <li>DBA có thể tận dụng toàn bộ sức mạnh của SQL Server (Triggers, Stored Procedures, Partitioning) mà không bị giới hạn bởi ORM.</li>
+              <li>Không tốn thời gian ngồi gõ lại các class C# thủ công.</li>
+            </ul>
+          </div>
+          <div class="p-4 rounded-xl border border-rose-200 bg-rose-50/50">
+            <h5 class="font-bold text-rose-900 text-sm mb-2">Nhược điểm</h5>
+            <ul class="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
+              <li>Mỗi khi sửa schema trên DB, bạn phải chạy lại lệnh scaffold (có nguy cơ ghi đè mất code tùy biến thêm nếu không dùng `partial class`).</li>
+              <li>Không có file Migration tự động theo dõi trong Git.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: MODEL-FIRST -->
+    <section id="content-modelfirst" class="space-y-8 hidden">
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 class="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <span class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center text-base font-black">4</span>
+            Phương Pháp Model-First (Kéo Thả EDMX)
+          </h2>
+          <span class="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full border border-amber-300">
+            Lịch Sử (Chủ Yếu Trong EF6 Cũ)
+          </span>
+        </div>
+
+        <p class="text-slate-600 text-base leading-relaxed mb-6">
+          <strong>Model-First</strong> là cách tiếp cận phổ biến trong thời kỳ <strong>Entity Framework 4, 5, 6 (.NET Framework)</strong>. Lập trình viên không bắt đầu bằng Code hay Database, mà mở giao diện trực quan trong Visual Studio (EDMX Designer) để vẽ các hình chữ nhật (Entity) và kéo các đường nối mũi tên (Quan hệ). Sau đó, Visual Studio sẽ sinh ra cả file script SQL để tạo DB lẫn mã C#.
+        </p>
+
+        <!-- Sơ đồ quy trình Model-First -->
+        <div class="bg-slate-900 rounded-xl p-6 text-white border border-slate-800 shadow-md mb-8">
+          <div class="text-center mb-6">
+            <span class="text-xs uppercase font-bold text-amber-400 tracking-wider">Sơ Đồ Quy Trình Model-First (Visual Designer)</span>
+          </div>
+
+          <div class="flex flex-col md:flex-row items-center justify-center gap-4">
+            <!-- Box 1: Visual Designer -->
+            <div class="bg-slate-800 border-2 border-amber-400 rounded-xl p-4 text-center w-full md:w-64">
+              <div class="w-10 h-10 bg-amber-400/20 text-amber-300 rounded-lg mx-auto flex items-center justify-center mb-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+              </div>
+              <h5 class="font-bold text-sm text-white">Vẽ Sơ Đồ Trực Quan</h5>
+              <p class="text-[11px] text-slate-400">Dùng Visual Studio kéo thả các hộp Entity và quan hệ trong file <code class="text-amber-300">.edmx</code></p>
+            </div>
+
+            <div class="text-amber-400 font-bold text-lg hidden md:block">➔ Sinh ra 2 nhánh ➔</div>
+
+            <!-- Two Branches -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full md:w-auto">
+              <!-- Branch A -->
+              <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 text-center">
+                <div class="text-emerald-400 font-bold text-xs mb-1">Nhánh 1: Cơ sở dữ liệu</div>
+                <h6 class="text-white text-sm font-semibold mb-1">Sinh Script DDL (.sql)</h6>
+                <p class="text-[11px] text-slate-400">Chạy script SQL để tạo các bảng trong Database.</p>
+              </div>
+
+              <!-- Branch B -->
+              <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 text-center">
+                <div class="text-indigo-400 font-bold text-xs mb-1">Nhánh 2: Mã nguồn</div>
+                <h6 class="text-white text-sm font-semibold mb-1">Sinh C# POCO Classes</h6>
+                <p class="text-[11px] text-slate-400">Tự động sinh ra các file `.cs` cho ứng dụng.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cảnh báo về EF Core -->
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-600 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <div>
+              <h5 class="font-bold text-amber-950 text-sm">Lưu Ý Quan Trọng Với EF Core</h5>
+              <p class="text-xs text-amber-900 mt-1 leading-relaxed">
+                Microsoft đã <strong>loại bỏ hoàn toàn Model-First (file .edmx)</strong> kể từ khi ra mắt <strong>Entity Framework Core</strong>. Lý do là file XML `.edmx` rất cồng kềnh, thường xuyên xảy ra xung đột không thể tự giải quyết khi nhiều lập trình viên cùng merge Git (Merge Conflict), và làm chậm Visual Studio. Thay vào đó, EF Core chuyển sang tập trung hoàn toàn vào <strong>Code-First</strong> và <strong>Scaffolding</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SO SÁNH & RA QUYẾT ĐỊNH -->
+    <section id="content-comparison" class="space-y-8 hidden">
+      <div class="bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm">
+        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-4 flex items-center gap-3">
+          <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-base font-black">5</span>
+          Bảng So Sánh Toàn Diện & Hướng Dẫn Lựa Chọn
+        </h2>
+
+        <!-- Comparison Table -->
+        <div class="overflow-x-auto mb-8 border border-slate-200 rounded-xl">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-3">Tiêu chí</th>
+                <th class="p-3 bg-emerald-50 text-emerald-900">Code-First</th>
+                <th class="p-3 bg-indigo-50 text-indigo-900">Database-First</th>
+                <th class="p-3 bg-amber-50 text-amber-900">Model-First</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr>
+                <td class="p-3 font-semibold text-slate-900">Nơi bắt đầu</td>
+                <td class="p-3 text-emerald-800">Viết Code C# (Entity)</td>
+                <td class="p-3 text-indigo-800">Tạo Database trước trên SQL Server</td>
+                <td class="p-3 text-amber-800">Vẽ sơ đồ EDMX trực quan</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-slate-900">Hỗ trợ trong EF Core</td>
+                <td class="p-3 text-emerald-700 font-bold">✔ Hỗ trợ chính (First-class)</td>
+                <td class="p-3 text-indigo-700 font-bold">✔ Hỗ trợ qua Scaffolding CLI</td>
+                <td class="p-3 text-rose-600 font-bold">❌ Đã bị khai tử</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-slate-900">Quản lý phiên bản (Git)</td>
+                <td class="p-3">Rất tốt qua các file Migrations (.cs)</td>
+                <td class="p-3">Khó khăn, phải quản lý file .sql riêng</td>
+                <td class="p-3">Rất dễ xung đột Git merge conflict</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-slate-900">Ai là người quyết định Schema?</td>
+                <td class="p-3">Lập trình viên phần mềm (.NET Dev)</td>
+                <td class="p-3">Quản trị viên CSDL (DBA)</td>
+                <td class="p-3">Người thiết kế mô hình qua UI</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-semibold text-slate-900">Dự án phù hợp nhất</td>
+                <td class="p-3 font-bold text-emerald-700">Dự án mới, startup, microservices</td>
+                <td class="p-3 font-bold text-indigo-700">Dự án bảo trì, DB đã chạy nhiều năm</td>
+                <td class="p-3 text-slate-500">Dự án cũ chạy .NET Framework</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Interactive Decision Maker -->
+        <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-6 md:p-8 text-white border border-indigo-500/20">
+          <h3 class="text-xl font-bold text-amber-300 mb-2">🎯 Bạn Nên Chọn Cách Nào Cho Dự Án Của Mình?</h3>
+          <p class="text-xs text-slate-300 mb-6">Bấm vào câu hỏi tình huống bên dưới để xem lời khuyên phù hợp nhất:</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div onclick="selectChoice('new')" class="choice-card p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-emerald-400 cursor-pointer transition">
+              <h5 class="font-bold text-white text-sm mb-1">A. Tôi đang làm một dự án mới hoàn toàn từ đầu (như Booking-app)</h5>
+              <p class="text-xs text-slate-400">Nhóm dev tự quản lý database, muốn mọi thứ lưu trong Git.</p>
+            </div>
+
+            <div onclick="selectChoice('legacy')" class="choice-card p-4 rounded-xl bg-slate-800/80 border border-slate-700 hover:border-indigo-400 cursor-pointer transition">
+              <h5 class="font-bold text-white text-sm mb-1">B. Công ty có sẵn Database hàng chục GB với DBA chuyên nghiệp</h5>
+              <p class="text-xs text-slate-400">DBA không cho phép dev tự ý đổi schema bằng code.</p>
+            </div>
+          </div>
+
+          <div id="choice-result" class="mt-6 p-4 rounded-xl bg-indigo-900/60 border border-indigo-400/40 text-sm hidden">
+            <!-- Dynamic result populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 mt-12 text-center text-xs text-slate-400 border-t border-slate-200 pt-6">
+    Tài liệu hướng dẫn kỹ thuật Entity Framework & EF Core • Áp dụng trực tiếp cho dự án BookingApp (.NET 9/10 & React)
+  </footer>
+
+  <script>
+    function switchTab(tabId) {
+      const tabs = ['overview', 'codefirst', 'dbfirst', 'modelfirst', 'comparison'];
+      tabs.forEach(t => {
+        const content = document.getElementById('content-' + t);
+        const btn = document.getElementById('tab-' + t);
+        if (content) content.classList.add('hidden');
+        if (btn) btn.classList.remove('active');
+      });
+
+      const activeContent = document.getElementById('content-' + tabId);
+      const activeBtn = document.getElementById('tab-' + tabId);
+      if (activeContent) activeContent.classList.remove('hidden');
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function selectChoice(type) {
+      const res = document.getElementById('choice-result');
+      res.classList.remove('hidden');
+      if (type === 'new') {
+        res.innerHTML = `
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">🚀</span>
+            <div>
+              <strong class="text-emerald-400 text-base">Đề Xuất: Chọn CODE-FIRST (Migrations)</strong>
+              <p class="text-xs text-slate-200 mt-1 leading-relaxed">
+                Đây là lựa chọn lý tưởng nhất! Bạn viết các lớp C# trong thư mục <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">Models/Entities</code>, sau đó dùng lệnh <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">dotnet ef migrations add</code> và <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">dotnet ef database update</code>. Toàn bộ lịch sử thay đổi database sẽ được lưu trong Git, dễ dàng triển khai CI/CD lên server.
+              </p>
+            </div>
+          </div>
+        `;
+      } else {
+        res.innerHTML = `
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">🏢</span>
+            <div>
+              <strong class="text-indigo-300 text-base">Đề Xuất: Chọn DATABASE-FIRST (Scaffolding)</strong>
+              <p class="text-xs text-slate-200 mt-1 leading-relaxed">
+                Bạn nên dùng lệnh <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">dotnet ef dbcontext scaffold</code> để EF tự động quét database có sẵn và sinh ra các Entity C#. Tuyệt đối không xóa các file đã sinh ra mà nên dùng cơ chế <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">partial class</code> nếu muốn viết thêm hàm xử lý cho entity.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
