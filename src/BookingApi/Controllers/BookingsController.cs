@@ -72,13 +72,13 @@ namespace BookingApi.Controllers
         b.TotalPrice,
         b.Status,
         b.CreatedAt,
-        Room = new
+        Room = b.Room != null ? new
         {
           b.Room.Id,
           b.Room.Name,
           b.Room.Location,
           b.Room.RoomType
-        }
+        } : null
       })
       .ToListAsync();
       return Ok(ApiResponse<object>.SuccessResult(bookings, "Lấy danh sách đặt phòng thành công."));

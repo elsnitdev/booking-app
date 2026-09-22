@@ -3,14 +3,11 @@ import Navbar from "../components/Navbar";
 import { Mail, Lock, UserPlus, Building, Briefcase } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
-import { API_BASE_URL } from "../config/api";
+import { authRequest } from "../requests/authRequest";
+import { ApiError } from "../lib/httpClient";
+import type { RegisterPayload } from "../types/auth";
 
-interface RegisterFormData {
-  companyName: string;
-  department: string;
-  email: string;
-  password: string;
-}
+type RegisterFormData = RegisterPayload;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -24,28 +21,16 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setErrorMsg("");
     try {
-      const response = await fetch(`${API_BASE_URL}/Auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: data.email,
-          password: data.password,
-          email: data.email,
-          companyName: data.companyName,
-          department: data.department,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        setErrorMsg(result.message || "Đăng ký thất bại.");
-        return;
-      }
+      await authRequest.register(data);
 
       alert("Đăng ký tài khoản doanh nghiệp thành công!");
       navigate("/login");
     } catch (err) {
-      setErrorMsg("Lỗi kết nối đến server.");
+      if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Lỗi kết nối đến server.");
+      }
     }
   };
 

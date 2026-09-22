@@ -16,33 +16,11 @@ import {
   ShieldCheck,
   Plus
 } from 'lucide-react';
-import { API_BASE_URL } from '../config/api';
-
-interface UserProfile {
-  id: string;
-  username: string;
-  email: string;
-  companyName: string;
-  department: string;
-  role: string;
-}
-
-interface BookingItem {
-  id: string;
-  title: string;
-  startTime: string;
-  endTime: string;
-  participantCount: number;
-  totalPrice: number;
-  status: string;
-  createdAt: string;
-  room: {
-    id: string;
-    name: string;
-    location: string;
-    roomType: string;
-  };
-}
+import { authRequest } from '../requests/authRequest';
+import { bookingRequest } from '../requests/bookingRequest';
+import { ApiError } from '../lib/httpClient';
+import type { UserProfile } from '../types/auth';
+import type { BookingItem } from '../types/booking';
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
@@ -67,34 +45,28 @@ export default function MyBookingsPage() {
         setError('');
 
         const [profileRes, bookingsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/Auth/me`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          fetch(`${API_BASE_URL}/Bookings/my-bookings`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
+          authRequest.getProfile(),
+          bookingRequest.getMyBookings()
         ]);
 
-        if (profileRes.status === 401 || bookingsRes.status === 401) {
+        if (profileRes.data) {
+          setProfile(profileRes.data);
+        }
+
+        if (bookingsRes.data) {
+          setBookings(bookingsRes.data);
+        }
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
           localStorage.removeItem('token');
           navigate('/login');
           return;
         }
-
-        const profileData = await profileRes.json();
-        const bookingsData = await bookingsRes.json();
-
-        if (profileRes.ok && profileData.data) {
-          setProfile(profileData.data);
-        }
-
-        if (bookingsRes.ok && bookingsData.data) {
-          setBookings(bookingsData.data);
+        if (err instanceof ApiError) {
+          setError(err.message);
         } else {
-          setError(bookingsData.message || 'Không thể tải danh sách đặt phòng.');
+          setError('Lỗi kết nối đến máy chủ API.');
         }
-      } catch (err) {
-        setError('Lỗi kết nối đến máy chủ API.');
       } finally {
         setLoading(false);
       }
@@ -113,25 +85,18 @@ export default function MyBookingsPage() {
 
     try {
       setCancellingId(bookingId);
-      const response = await fetch(`${API_BASE_URL}/Bookings/${bookingId}/cancel`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        alert(result.message || 'Hủy phòng thất bại. Vui lòng thử lại.');
-        return;
-      }
+      await bookingRequest.cancel(bookingId);
 
       setBookings(prev => 
         prev.map(b => b.id === bookingId ? { ...b, status: 'Cancelled' } : b)
       );
       alert('Đã hủy lịch đặt phòng thành công.');
     } catch (err) {
-      alert('Lỗi kết nối khi gửi yêu cầu hủy phòng.');
+      if (err instanceof ApiError) {
+        alert(err.message || 'Hủy phòng thất bại. Vui lòng thử lại.');
+      } else {
+        alert('Lỗi kết nối khi gửi yêu cầu hủy phòng.');
+      }
     } finally {
       setCancellingId(null);
     }

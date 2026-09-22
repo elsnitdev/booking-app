@@ -3,12 +3,11 @@ import Navbar from "../components/Navbar";
 import { Mail, Lock, LogIn } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useState } from "react";
-import { API_BASE_URL } from "../config/api";
+import { authRequest } from "../requests/authRequest";
+import { ApiError } from "../lib/httpClient";
+import type { LoginPayload } from "../types/auth";
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
+type LoginFormData = LoginPayload;
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,21 +21,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setErrorMsg("");
     try {
-      const response = await fetch(`${API_BASE_URL}/Auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: data.email,
-          email: data.email,
-          password: data.password,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        setErrorMsg(result.message || "Sai tài khoản hoặc mật khẩu.");
-        return;
-      }
+      const result = await authRequest.login(data);
 
       // Lưu JWT token vào localStorage
       if (result.data) {
@@ -46,7 +31,11 @@ export default function LoginPage() {
       alert("Đăng nhập thành công!");
       navigate("/");
     } catch (err) {
-      setErrorMsg("Lỗi kết nối đến server.");
+      if (err instanceof ApiError) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Lỗi kết nối đến server.");
+      }
     }
   };
 

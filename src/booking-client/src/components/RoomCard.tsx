@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Users, MapPin, Star, ArrowUpRight } from 'lucide-react';
-import type { Room } from '../pages/HomePage';
+import type { Room } from '../types/room';
 
 interface RoomCardProps {
   room: Room;

@@ -2,8 +2,10 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { ArrowLeft, Users, Monitor, Wifi, Coffee, CheckCircle, MapPin, ShieldCheck, Video, Presentation, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import type { Room } from './HomePage';
-import { API_BASE_URL } from '../config/api';
+import type { Room } from '../types/room';
+import { roomRequest } from '../requests/roomRequest';
+import { bookingRequest } from '../requests/bookingRequest';
+import { ApiError } from '../lib/httpClient';
 
 export default function RoomDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,19 +31,20 @@ export default function RoomDetailPage() {
       try {
         setLoading(true);
         setError('');
-        const response = await fetch(`${API_BASE_URL}/Rooms/${id}`);
-        const result = await response.json();
+        const result = await roomRequest.getById(id);
 
-        if (response.ok && result.data) {
+        if (result.data) {
           setRoom(result.data);
           if (result.data.capacity) {
             setParticipantCount(Math.min(5, result.data.capacity));
           }
-        } else {
-          setError(result.message || 'Không tìm thấy phòng.');
         }
       } catch (err) {
-        setError('Không thể kết nối đến máy chủ API.');
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError('Không thể kết nối đến máy chủ API.');
+        }
       } finally {
         setLoading(false);
       }
@@ -92,32 +95,22 @@ export default function RoomDetailPage() {
       const startDateTime = new Date(`${date}T${startTime}:00`).toISOString();
       const endDateTime = new Date(`${date}T${endTime}:00`).toISOString();
 
-      const response = await fetch(`${API_BASE_URL}/Bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          roomId: room?.id,
-          title: title,
-          startTime: startDateTime,
-          endTime: endDateTime,
-          participantCount: Number(participantCount)
-        })
+      await bookingRequest.create({
+        roomId: room?.id,
+        title: title,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        participantCount: Number(participantCount)
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        setBookingMessage(result.message || 'Đặt phòng thất bại. Vui lòng thử lại.');
-        return;
-      }
 
       alert('Chúc mừng! Cuộc họp của bạn đã được đặt thành công.');
       navigate('/my-bookings');
     } catch (err) {
-      setBookingMessage('Lỗi kết nối khi gửi thông tin đặt phòng.');
+      if (err instanceof ApiError) {
+        setBookingMessage(err.message);
+      } else {
+        setBookingMessage('Lỗi kết nối khi gửi thông tin đặt phòng.');
+      }
     } finally {
       setBookingLoading(false);
     }

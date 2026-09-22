@@ -4,7 +4,13 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import RoomDetailPage from './pages/RoomDetailPage';
 import MyBookingsPage from './pages/MyBookingsPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
+import { lazy } from 'react';
+import AdminLayout from './pages/admin/AdminLayout';
+
+const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'));
+const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
+const AdminRoomsPage = lazy(() => import('./pages/admin/AdminRoomsPage'));
+const AdminClientsPage = lazy(() => import('./pages/admin/AdminClientsPage'));
 
 function App() {
   return (
@@ -16,7 +22,14 @@ function App() {
         <Route path="/room/:id" element={<RoomDetailPage />} />
         <Route path="/my-bookings" element={<MyBookingsPage />} />
         <Route path="/profile" element={<MyBookingsPage />} />
-        <Route path="/admin" element={<AdminDashboardPage />} />
+        
+        {/* Tuyến đường phân trang cho Admin Dashboard */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="bookings" element={<AdminBookingsPage />} />
+          <Route path="rooms" element={<AdminRoomsPage />} />
+          <Route path="clients" element={<AdminClientsPage />} />
+        </Route>
       </Routes>
     </Router>
   );

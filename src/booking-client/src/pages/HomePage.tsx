@@ -3,19 +3,11 @@ import SearchBar from "../components/SearchBar";
 import RoomCard from "../components/RoomCard";
 import { useEffect, useState } from "react";
 import { Sparkles, Building2 } from "lucide-react";
-import { API_BASE_URL } from "../config/api";
+import { roomRequest } from "../requests/roomRequest";
+import type { Room } from "../types/room";
+import { ApiError } from "../lib/httpClient";
 
-export interface Room {
-  id: string;
-  name: string;
-  capacity: number;
-  roomType: string;
-  hourlyRate: number;
-  location: string;
-  hasProjector: boolean;
-  hasWhiteboard: boolean;
-  hasVideoConference: boolean;
-}
+export type { Room };
 
 export default function HomePage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -27,17 +19,18 @@ export default function HomePage() {
       try {
         setLoading(true);
         setError("");
-        const response = await fetch(`${API_BASE_URL}/Rooms`);
-        const result = await response.json();
-        if (response.ok && result.data) {
+        const result = await roomRequest.getAll();
+        if (result.data) {
           setRooms(result.data);
-        } else {
-          setError(result.message || "Không thể tải danh sách phòng.");
         }
       } catch (err) {
-        setError(
-          "Không thể kết nối đến máy chủ API (Hãy đảm bảo dotnet run đang chạy).",
-        );
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError(
+            "Không thể kết nối đến máy chủ API (Hãy đảm bảo dotnet run đang chạy)."
+          );
+        }
       } finally {
         setLoading(false);
       }
