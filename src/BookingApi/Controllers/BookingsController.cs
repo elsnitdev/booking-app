@@ -44,9 +44,16 @@ namespace BookingApi.Controllers
         return Unauthorized(ApiResponse<string>.ErrorResult("Không xác định được danh tính người dùng."));
       }
 
-      var result = await _bookingService.CreateBookingAsync(request, userId);
-      if (!result.Success) return BadRequest(result);
-      return Ok(result);
+      try
+      {
+        var result = await _bookingService.CreateBookingAsync(request, userId);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+      }
+      catch (DbUpdateConcurrencyException)
+      {
+        return StatusCode(StatusCodes.Status409Conflict, ApiResponse<string>.ErrorResult("Phòng họp vừa được một đơn vị khác hoàn tất đăng ký trước bạn vài giây. Vui lòng chọn khung giờ khác!"));
+      }
     }
     [HttpGet("my-booking")]
     [HttpGet("my-bookings")]

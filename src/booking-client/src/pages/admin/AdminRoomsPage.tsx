@@ -11,7 +11,8 @@ import {
   X,
   Loader2,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  WifiOff
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
 import type { AdminRoomItem, RoomManagePayload } from '../../types/admin';
@@ -21,6 +22,7 @@ export default function AdminRoomsPage() {
   const [rooms, setRooms] = useState<AdminRoomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingCache, setIsUsingCache] = useState(false);
 
   // Modal State
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -32,7 +34,7 @@ export default function AdminRoomsPage() {
   const [formType, setFormType] = useState('Executive Boardroom');
   const [formCapacity, setFormCapacity] = useState(12);
   const [formRate, setFormRate] = useState(350000);
-  const [formLocation, setFormLocation] = useState('Tầng 18, Tòa tháp Bitexco, Q.1, TP.HCM');
+  const [formLocation, setFormLocation] = useState('');
   const [formProjector, setFormProjector] = useState(true);
   const [formWhiteboard, setFormWhiteboard] = useState(true);
   const [formVideo, setFormVideo] = useState(true);
@@ -46,16 +48,35 @@ export default function AdminRoomsPage() {
       const res = await adminRequest.getRooms();
       if (res.data) {
         setRooms(res.data);
+        setIsUsingCache(false);
+        // Lưu cache dữ liệu thật để hiển thị khi mất mạng
+        try {
+          localStorage.setItem('admin_cached_rooms', JSON.stringify(res.data));
+        } catch {
+          // Bỏ qua lỗi localStorage
+        }
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Không thể tải danh sách phòng.';
       setError(errorMsg);
 
-      // Fallback: nạp từ localStorage nếu có
-      const stored = localStorage.getItem('admin_rooms_state');
-      if (stored) {
-        setRooms(JSON.parse(stored));
+      // Nếu mất mạng hoặc lỗi máy chủ, thử lấy từ cache thật đã lưu trước đó
+      const cached = localStorage.getItem('admin_cached_rooms');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setRooms(parsed);
+            setIsUsingCache(true);
+            return;
+          }
+        } catch {
+          // Bỏ qua lỗi parse
+        }
       }
+      // Nếu không có cache, để danh sách rỗng (không dùng mock data)
+      setRooms([]);
+      setIsUsingCache(false);
     } finally {
       setLoading(false);
     }
@@ -69,9 +90,9 @@ export default function AdminRoomsPage() {
     setEditingRoom(null);
     setFormName('');
     setFormType('Executive Boardroom');
-    setFormCapacity(16);
-    setFormRate(400000);
-    setFormLocation('Tầng 15, Keangnam Landmark, Hà Nội');
+    setFormCapacity(12);
+    setFormRate(350000);
+    setFormLocation('');
     setFormProjector(true);
     setFormWhiteboard(true);
     setFormVideo(true);
@@ -111,38 +132,17 @@ export default function AdminRoomsPage() {
 
     try {
       if (editingRoom) {
-        // Cập nhật qua API
         await adminRequest.updateRoom(editingRoom.id, payload);
         showToast(`Đã cập nhật thông tin "${formName}" thành công!`, 'success');
       } else {
-        // Tạo mới qua API
         await adminRequest.createRoom(payload);
         showToast(`Đã tạo mới không gian "${formName}" thành công!`, 'success');
       }
       setIsRoomModalOpen(false);
       await fetchRooms();
     } catch (err: unknown) {
-      // Fallback lưu cục bộ nếu backend lỗi
       const errorMsg = err instanceof Error ? err.message : 'Lỗi khi lưu phòng họp.';
-      showToast(`${errorMsg} Đã lưu thay đổi vào bộ nhớ cục bộ.`, 'info');
-
-      if (editingRoom) {
-        const updated = rooms.map((r) =>
-          r.id === editingRoom.id ? { ...r, ...payload } : r
-        );
-        setRooms(updated);
-        localStorage.setItem('admin_rooms_state', JSON.stringify(updated));
-      } else {
-        const newRoom: AdminRoomItem = {
-          id: `room-${Date.now()}`,
-          ...payload,
-          isActive: true,
-        };
-        const updated = [newRoom, ...rooms];
-        setRooms(updated);
-        localStorage.setItem('admin_rooms_state', JSON.stringify(updated));
-      }
-      setIsRoomModalOpen(false);
+      showToast(`Không thể lưu phòng khi mất kết nối máy chủ: ${errorMsg}`, 'error');
     } finally {
       setSubmitting(false);
     }
@@ -152,21 +152,22 @@ export default function AdminRoomsPage() {
     try {
       await adminRequest.toggleRoomStatus(roomId);
       showToast('Đã thay đổi trạng thái khả dụng của phòng họp.', 'success');
-      setRooms((prev) =>
-        prev.map((r) => (r.id === roomId ? { ...r, isActive: !r.isActive } : r))
-      );
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái phòng.';
-      showToast(`${errorMsg} Đã cập nhật vào bộ nhớ tạm.`, 'info');
       setRooms((prev) => {
-        const updated = prev.map((r) =>
-          r.id === roomId ? { ...r, isActive: !r.isActive } : r
-        );
-        localStorage.setItem('admin_rooms_state', JSON.stringify(updated));
+        const updated = prev.map((r) => (r.id === roomId ? { ...r, isActive: !r.isActive } : r));
+        try {
+          localStorage.setItem('admin_cached_rooms', JSON.stringify(updated));
+        } catch {
+          // Bỏ qua
+        }
         return updated;
       });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Lỗi khi đổi trạng thái phòng.';
+      showToast(`Không thể thay đổi trạng thái khi mất kết nối mạng: ${errorMsg}`, 'error');
     }
   };
+
+  const isUnauthorized = error?.toLowerCase().includes('unauthorized') || error?.includes('401');
 
   return (
     <div className="space-y-6">
@@ -201,24 +202,51 @@ export default function AdminRoomsPage() {
         </div>
       </div>
 
-      {error && (
+      {/* Thông báo khi đang dùng cache ngoại tuyến lúc mất mạng */}
+      {isUsingCache && (
+        <div className="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <WifiOff size={15} className="text-sky-600 shrink-0" />
+            <span>
+              Mất kết nối máy chủ API. Đang hiển thị danh mục phòng từ bộ nhớ đệm gần nhất.
+            </span>
+          </div>
+          <button
+            onClick={fetchRooms}
+            className="font-semibold text-sky-900 hover:text-sky-950 underline self-end sm:self-auto shrink-0 cursor-pointer"
+          >
+            Thử kết nối lại
+          </button>
+        </div>
+      )}
+
+      {/* Thông báo lỗi khi không có cache */}
+      {error && !isUsingCache && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle size={15} className="text-amber-600 shrink-0" />
             <span>
-              {error.toLowerCase().includes('unauthorized') || error.includes('401')
-                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized). Đang hiển thị bản sao lưu từ bộ nhớ.'
-                : `${error} - Đang hiển thị bản sao lưu từ bộ nhớ trình duyệt.`}
+              {isUnauthorized
+                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized).'
+                : `Không thể kết nối đến máy chủ API: ${error}.`}
             </span>
           </div>
-          {(error.toLowerCase().includes('unauthorized') || error.includes('401')) && (
-            <Link
-              to="/login"
-              className="font-semibold text-amber-900 hover:text-amber-950 underline self-end sm:self-auto shrink-0"
+          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+            {isUnauthorized && (
+              <Link
+                to="/login"
+                className="font-semibold text-amber-900 hover:text-amber-950 underline"
+              >
+                Đăng nhập lại
+              </Link>
+            )}
+            <button
+              onClick={fetchRooms}
+              className="flex items-center gap-1 font-semibold text-amber-800 hover:text-amber-950 cursor-pointer"
             >
-              Đăng nhập lại
-            </Link>
-          )}
+              <RefreshCw size={12} /> Thử lại
+            </button>
+          </div>
         </div>
       )}
 
@@ -227,6 +255,20 @@ export default function AdminRoomsPage() {
         <div className="py-20 text-center text-stone-500">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-[#c59b48] mb-3" />
           <p className="text-xs font-light">Đang nạp danh mục phòng họp...</p>
+        </div>
+      ) : rooms.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center text-stone-500">
+          <p className="text-sm">
+            {error
+              ? 'Không có dữ liệu phòng để hiển thị khi mất kết nối mạng.'
+              : 'Chưa có không gian phòng họp nào trong hệ thống.'}
+          </p>
+          <button
+            onClick={openAddRoomModal}
+            className="mt-4 inline-flex items-center gap-2 bg-[#c59b48] hover:bg-[#b88e38] text-[#0b1220] px-4 py-2 rounded-xl text-xs font-semibold transition"
+          >
+            <Plus size={14} /> Thêm phòng đầu tiên
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -262,7 +304,7 @@ export default function AdminRoomsPage() {
 
                 <p className="text-xs text-stone-500 flex items-center gap-1.5 font-light mb-4">
                   <MapPin size={13} className="text-[#c59b48] shrink-0" />
-                  <span>{room.location}</span>
+                  <span>{room.location || 'Địa điểm chưa cập nhật'}</span>
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 py-3 border-y border-stone-100 text-xs mb-4">
@@ -432,7 +474,7 @@ export default function AdminRoomsPage() {
                     required
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
-                    placeholder="Tầng 15, Keangnam Landmark"
+                    placeholder="VD: Tầng 3, Tòa nhà Alpha, Q.1, TP.HCM"
                     className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800"
                   />
                 </div>

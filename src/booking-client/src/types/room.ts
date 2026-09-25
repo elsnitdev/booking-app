@@ -9,6 +9,7 @@ export interface Room {
   hasWhiteboard?: boolean;
   hasVideoConference?: boolean;
   isActive?: boolean;
+  cleanupTimeMinutes?: number;
 }
 
 export interface AdminRoom {
@@ -22,4 +23,5 @@ export interface AdminRoom {
   hasWhiteboard: boolean;
   hasVideoConference: boolean;
   isActive: boolean;
+  cleanupTimeMinutes?: number;
 }

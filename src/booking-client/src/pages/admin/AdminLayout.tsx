@@ -54,7 +54,7 @@ export default function AdminLayout() {
               <div className="flex items-center gap-2">
                 <AlertCircle size={15} className="text-amber-600 shrink-0" />
                 <span>
-                  Bạn chưa đăng nhập. Dữ liệu đang hiển thị ở chế độ xem trước (Preview Mode). Vui lòng đăng nhập tài khoản quản trị để đồng bộ dữ liệu thật.
+                  Bạn chưa đăng nhập. Vui lòng đăng nhập tài khoản quản trị để truy cập và quản lý dữ liệu hệ thống.
                 </span>
               </div>
               <Link

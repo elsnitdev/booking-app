@@ -5,6 +5,7 @@ export class ApiError extends Error {
   status: number;
   data?: unknown;
   errors?: string[] | null;
+  response?: { status: number; data?: unknown };
 
   constructor(message: string, status: number, data?: unknown, errors?: string[] | null) {
     super(message);
@@ -12,6 +13,7 @@ export class ApiError extends Error {
     this.status = status;
     this.data = data;
     this.errors = errors;
+    this.response = { status, data };
   }
 }
 

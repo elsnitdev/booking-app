@@ -7,7 +7,8 @@ import {
   X,
   Loader2,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  WifiOff
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
 import type { AdminBookingItem } from '../../types/admin';
@@ -17,6 +18,7 @@ export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<AdminBookingItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingCache, setIsUsingCache] = useState(false);
   const [bookingFilter, setBookingFilter] = useState<'all' | 'Confirmed' | 'Pending' | 'Completed' | 'Cancelled'>('all');
   const [bookingSearch, setBookingSearch] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -32,23 +34,41 @@ export default function AdminBookingsPage() {
       });
       if (res.data) {
         setBookings(res.data);
+        setIsUsingCache(false);
+        // Lưu cache khi gọi API thành công để dùng khi mất mạng
+        try {
+          localStorage.setItem('admin_cached_bookings', JSON.stringify(res.data));
+        } catch {
+          // Bỏ qua lỗi localStorage
+        }
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Không thể tải danh sách lịch đặt.';
       setError(errorMsg);
 
-      // Fallback: nếu lỗi kết nối backend thì thử đọc từ localStorage
-      const saved = localStorage.getItem('admin_bookings_state');
-      if (saved) {
-        setBookings(JSON.parse(saved));
+      // Nếu mất mạng hoặc lỗi máy chủ, thử lấy từ cache thật đã lưu trước đó
+      const cached = localStorage.getItem('admin_cached_bookings');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setBookings(parsed);
+            setIsUsingCache(true);
+            return;
+          }
+        } catch {
+          // Bỏ qua lỗi parse
+        }
       }
+      // Nếu không có cache, để danh sách rỗng (không dùng mock data)
+      setBookings([]);
+      setIsUsingCache(false);
     } finally {
       setLoading(false);
     }
   }, [bookingFilter, bookingSearch]);
 
   useEffect(() => {
-    // Debounce tìm kiếm nhẹ
     const timer = setTimeout(() => {
       fetchBookings();
     }, 300);
@@ -61,28 +81,27 @@ export default function AdminBookingsPage() {
   ) => {
     setUpdatingId(booking.rawId || booking.id);
     try {
-      // Gọi API backend
       await adminRequest.updateBookingStatus(booking.rawId || booking.id, newStatus);
       showToast(`Đã cập nhật trạng thái lịch ${booking.id} sang "${newStatus}".`, 'success');
 
-      // Cập nhật state cục bộ
-      setBookings((prev) =>
-        prev.map((b) => (b.id === booking.id ? { ...b, status: newStatus } : b))
-      );
-    } catch (err: unknown) {
-      // Fallback nếu máy chủ lỗi
-      const errorMsg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái.';
-      showToast(`${errorMsg} Đã lưu thay đổi vào bộ nhớ tạm.`, 'info');
-
       setBookings((prev) => {
         const updated = prev.map((b) => (b.id === booking.id ? { ...b, status: newStatus } : b));
-        localStorage.setItem('admin_bookings_state', JSON.stringify(updated));
+        try {
+          localStorage.setItem('admin_cached_bookings', JSON.stringify(updated));
+        } catch {
+          // Bỏ qua
+        }
         return updated;
       });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Lỗi khi cập nhật trạng thái.';
+      showToast(`Không thể cập nhật trạng thái khi mất kết nối mạng: ${errorMsg}`, 'error');
     } finally {
       setUpdatingId(null);
     }
   };
+
+  const isUnauthorized = error?.toLowerCase().includes('unauthorized') || error?.includes('401');
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
@@ -148,24 +167,51 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      {error && (
+      {/* Thông báo khi đang dùng cache ngoại tuyến lúc mất mạng */}
+      {isUsingCache && (
+        <div className="mb-4 bg-sky-50 border border-sky-200 text-sky-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <WifiOff size={15} className="text-sky-600 shrink-0" />
+            <span>
+              Mất kết nối máy chủ API. Đang hiển thị danh sách lịch đặt từ bộ nhớ đệm gần nhất.
+            </span>
+          </div>
+          <button
+            onClick={fetchBookings}
+            className="font-semibold text-sky-900 hover:text-sky-950 underline self-end sm:self-auto shrink-0 cursor-pointer"
+          >
+            Thử kết nối lại
+          </button>
+        </div>
+      )}
+
+      {/* Thông báo lỗi khi không có cache */}
+      {error && !isUsingCache && (
         <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle size={15} className="text-amber-600 shrink-0" />
             <span>
-              {error.toLowerCase().includes('unauthorized') || error.includes('401')
-                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized). Đang hiển thị bản ghi bộ nhớ tạm.'
-                : `${error} - Đang hiển thị bản ghi đã lưu trong bộ nhớ trình duyệt.`}
+              {isUnauthorized
+                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized).'
+                : `Không thể kết nối đến máy chủ API: ${error}.`}
             </span>
           </div>
-          {(error.toLowerCase().includes('unauthorized') || error.includes('401')) && (
-            <Link
-              to="/login"
-              className="font-semibold text-amber-900 hover:text-amber-950 underline self-end sm:self-auto shrink-0"
+          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+            {isUnauthorized && (
+              <Link
+                to="/login"
+                className="font-semibold text-amber-900 hover:text-amber-950 underline"
+              >
+                Đăng nhập lại
+              </Link>
+            )}
+            <button
+              onClick={fetchBookings}
+              className="flex items-center gap-1 font-semibold text-amber-800 hover:text-amber-950 cursor-pointer"
             >
-              Đăng nhập lại
-            </Link>
-          )}
+              <RefreshCw size={12} /> Thử lại
+            </button>
+          </div>
         </div>
       )}
 
@@ -195,7 +241,9 @@ export default function AdminBookingsPage() {
             ) : bookings.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-12 text-center text-stone-400">
-                  Không tìm thấy lịch đặt nào phù hợp với bộ lọc.
+                  {error
+                    ? 'Không có dữ liệu lịch đặt để hiển thị khi mất kết nối mạng.'
+                    : 'Không tìm thấy lịch đặt nào phù hợp với bộ lọc.'}
                 </td>
               </tr>
             ) : (

@@ -6,6 +6,7 @@ import RoomDetailPage from './pages/RoomDetailPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import { lazy } from 'react';
 import AdminLayout from './pages/admin/AdminLayout';
+import { ToastProvider } from './context/ToastContext';
 
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'));
 const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
@@ -14,8 +15,9 @@ const AdminClientsPage = lazy(() => import('./pages/admin/AdminClientsPage'));
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <ToastProvider>
+      <Router>
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -32,6 +34,7 @@ function App() {
         </Route>
       </Routes>
     </Router>
+  </ToastProvider>
   );
 }
 

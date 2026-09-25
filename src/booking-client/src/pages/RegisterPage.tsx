@@ -6,11 +6,13 @@ import { useState } from "react";
 import { authRequest } from "../requests/authRequest";
 import { ApiError } from "../lib/httpClient";
 import type { RegisterPayload } from "../types/auth";
+import { useToast } from "../context/ToastContext";
 
 type RegisterFormData = RegisterPayload;
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState("");
   const {
     register,
@@ -23,13 +25,15 @@ export default function RegisterPage() {
     try {
       await authRequest.register(data);
 
-      alert("Đăng ký tài khoản doanh nghiệp thành công!");
+      toast.success("Đăng ký tài khoản doanh nghiệp thành công!");
       navigate("/login");
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMsg(err.message);
+        toast.error(err.message);
       } else {
         setErrorMsg("Lỗi kết nối đến server.");
+        toast.error("Lỗi kết nối đến server.");
       }
     }
   };

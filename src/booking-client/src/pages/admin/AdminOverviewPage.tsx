@@ -9,16 +9,31 @@ import {
   Sparkles,
   Loader2,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  WifiOff
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
 import type { AdminDashboardStats, AdminRoomItem } from '../../types/admin';
+
+const emptyStats: AdminDashboardStats = {
+  totalRevenue: 0,
+  totalBookings: 0,
+  confirmedBookings: 0,
+  pendingBookings: 0,
+  completedBookings: 0,
+  cancelledBookings: 0,
+  totalRooms: 0,
+  activeRooms: 0,
+  totalCorporateUsers: 0,
+  recentBookings: []
+};
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [rooms, setRooms] = useState<AdminRoomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingCache, setIsUsingCache] = useState(false);
 
   const fetchOverviewData = useCallback(async () => {
     setLoading(true);
@@ -29,18 +44,67 @@ export default function AdminOverviewPage() {
         adminRequest.getRooms(),
       ]);
 
+      let hasValidStats = false;
       if (statsRes.status === 'fulfilled' && statsRes.value.data) {
         setStats(statsRes.value.data);
+        hasValidStats = true;
+        try {
+          localStorage.setItem('admin_cached_stats', JSON.stringify(statsRes.value.data));
+        } catch {
+          // Bỏ qua lỗi localStorage
+        }
       } else if (statsRes.status === 'rejected') {
         throw statsRes.reason;
       }
 
       if (roomsRes.status === 'fulfilled' && roomsRes.value.data) {
         setRooms(roomsRes.value.data);
+        try {
+          localStorage.setItem('admin_cached_rooms', JSON.stringify(roomsRes.value.data));
+        } catch {
+          // Bỏ qua lỗi localStorage
+        }
+      }
+
+      if (hasValidStats) {
+        setIsUsingCache(false);
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Không thể tải dữ liệu thống kê từ máy chủ.';
       setError(errorMsg);
+
+      // Nếu mất mạng, thử khôi phục từ cache thực tế đã lưu trước đó
+      const cachedStats = localStorage.getItem('admin_cached_stats');
+      const cachedRooms = localStorage.getItem('admin_cached_rooms');
+
+      let restoredCache = false;
+      if (cachedStats) {
+        try {
+          const parsed = JSON.parse(cachedStats);
+          if (parsed && typeof parsed.totalRevenue === 'number') {
+            setStats(parsed);
+            restoredCache = true;
+          }
+        } catch {
+          // Bỏ qua lỗi parse
+        }
+      }
+
+      if (cachedRooms) {
+        try {
+          const parsedRooms = JSON.parse(cachedRooms);
+          if (Array.isArray(parsedRooms)) {
+            setRooms(parsedRooms);
+          }
+        } catch {
+          // Bỏ qua lỗi parse
+        }
+      }
+
+      setIsUsingCache(restoredCache);
+      if (!restoredCache) {
+        setStats(emptyStats);
+      }
     } finally {
       setLoading(false);
     }
@@ -50,7 +114,7 @@ export default function AdminOverviewPage() {
     fetchOverviewData();
   }, [fetchOverviewData]);
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-stone-500">
         <Loader2 className="w-8 h-8 animate-spin text-[#c59b48] mb-3" />
@@ -59,32 +123,38 @@ export default function AdminOverviewPage() {
     );
   }
 
-  // Dữ liệu fallback nếu chưa kết nối được backend
-  const displayStats: AdminDashboardStats = stats || {
-    totalRevenue: 125000000,
-    totalBookings: 24,
-    confirmedBookings: 18,
-    pendingBookings: 4,
-    completedBookings: 2,
-    cancelledBookings: 0,
-    totalRooms: 4,
-    activeRooms: 4,
-    totalCorporateUsers: 5,
-    recentBookings: []
-  };
-
+  const displayStats = stats || emptyStats;
   const isUnauthorized = error?.toLowerCase().includes('unauthorized') || error?.includes('401');
 
   return (
     <div className="space-y-8">
-      {error && (
+      {/* Thông báo khi đang dùng cache ngoại tuyến lúc mất mạng */}
+      {isUsingCache && (
+        <div className="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <WifiOff size={15} className="text-sky-600 shrink-0" />
+            <span>
+              Mất kết nối máy chủ API. Đang hiển thị số liệu thống kê từ bộ nhớ đệm gần nhất.
+            </span>
+          </div>
+          <button
+            onClick={fetchOverviewData}
+            className="font-semibold text-sky-900 hover:text-sky-950 underline self-end sm:self-auto shrink-0 cursor-pointer"
+          >
+            Thử kết nối lại
+          </button>
+        </div>
+      )}
+
+      {/* Thông báo lỗi khi không có cache */}
+      {error && !isUsingCache && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle size={16} className="text-amber-600 shrink-0" />
             <span>
               {isUnauthorized
-                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized). Đang hiển thị số liệu mẫu.'
-                : `Đang hiển thị số liệu mẫu: ${error}.`}
+                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized).'
+                : `Không thể kết nối đến máy chủ API: ${error}.`}
             </span>
           </div>
           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
@@ -259,7 +329,9 @@ export default function AdminOverviewPage() {
               ))
             ) : (
               <div className="py-8 text-center text-xs text-stone-400">
-                Chưa có lịch họp nào được ghi nhận gần đây.
+                {error
+                  ? 'Không thể tải lịch đặt phòng gần nhất khi mất kết nối mạng.'
+                  : 'Chưa có lịch họp nào được ghi nhận gần đây.'}
               </div>
             )}
           </div>
@@ -301,7 +373,7 @@ export default function AdminOverviewPage() {
                 ))
               ) : (
                 <div className="text-xs text-stone-400 py-4 text-center">
-                  Đang đồng bộ danh mục phòng...
+                  {error ? 'Không thể tải tình trạng phòng khi mất mạng.' : 'Chưa có phòng họp nào trong hệ thống.'}
                 </div>
               )}
             </div>

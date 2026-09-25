@@ -6,11 +6,13 @@ import { useState } from "react";
 import { authRequest } from "../requests/authRequest";
 import { ApiError } from "../lib/httpClient";
 import type { LoginPayload } from "../types/auth";
+import { useToast } from "../context/ToastContext";
 
 type LoginFormData = LoginPayload;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [errorMsg, setErrorMsg] = useState("");
   const {
     register,
@@ -28,13 +30,15 @@ export default function LoginPage() {
         localStorage.setItem("token", result.data);
       }
 
-      alert("Đăng nhập thành công!");
+      toast.success("Đăng nhập tài khoản thành công!");
       navigate("/");
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMsg(err.message);
+        toast.error(err.message);
       } else {
         setErrorMsg("Lỗi kết nối đến server.");
+        toast.error("Lỗi kết nối đến server.");
       }
     }
   };

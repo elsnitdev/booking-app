@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, RefreshCw, AlertCircle, Building, Award } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, Building, Award, WifiOff } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
 import type { CorporateUserItem } from '../../types/admin';
 
@@ -8,6 +8,7 @@ export default function AdminClientsPage() {
   const [clients, setClients] = useState<CorporateUserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingCache, setIsUsingCache] = useState(false);
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -16,64 +17,35 @@ export default function AdminClientsPage() {
       const res = await adminRequest.getCorporateUsers();
       if (res.data) {
         setClients(res.data);
+        setIsUsingCache(false);
+        // Lưu cache dữ liệu thật để hiển thị khi mất mạng
+        try {
+          localStorage.setItem('admin_cached_clients', JSON.stringify(res.data));
+        } catch {
+          // Bỏ qua lỗi localStorage nếu đầy
+        }
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Không thể tải danh sách doanh nghiệp đối tác.';
       setError(errorMsg);
 
-      // Fallback danh sách tĩnh nếu máy chủ chưa mở
-      setClients([
-        {
-          id: 'CLI-01',
-          username: 'vietjet',
-          companyName: 'Vietjet Aviation JSC',
-          email: 'tinsle0609@gmail.com',
-          department: 'Khối Kế Hoạch & Đầu Tư',
-          role: 'User',
-          totalMeetings: 14,
-          totalSpent: 18500000,
-        },
-        {
-          id: 'CLI-02',
-          username: 'fpt_global',
-          companyName: 'FPT Software Global',
-          email: 'contact@fpt.com',
-          department: 'Trung Tâm Nghiên Cứu AI',
-          role: 'User',
-          totalMeetings: 22,
-          totalSpent: 31200000,
-        },
-        {
-          id: 'CLI-03',
-          username: 'vingroup',
-          companyName: 'Vingroup Holding',
-          email: 'admin@vingroup.net',
-          department: 'Ban Thư Ký HĐQT',
-          role: 'User',
-          totalMeetings: 9,
-          totalSpent: 12400000,
-        },
-        {
-          id: 'CLI-04',
-          username: 'techcombank',
-          companyName: 'Techcombank Securities',
-          email: 'board@tcbs.com.vn',
-          department: 'Khối Đầu Tư & Phân Tích',
-          role: 'User',
-          totalMeetings: 11,
-          totalSpent: 15800000,
-        },
-        {
-          id: 'CLI-05',
-          username: 'masan',
-          companyName: 'Masan Consumer',
-          email: 'hr@masan.vn',
-          department: 'Nhân Sự & Đào Tạo',
-          role: 'User',
-          totalMeetings: 5,
-          totalSpent: 6200000,
+      // Nếu mất mạng hoặc lỗi máy chủ, kiểm tra xem có cache dữ liệu thật trước đó không
+      const cached = localStorage.getItem('admin_cached_clients');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setClients(parsed);
+            setIsUsingCache(true);
+            return;
+          }
+        } catch {
+          // Bỏ qua lỗi parse
         }
-      ]);
+      }
+      // Nếu không có cache, để danh sách rỗng (không dùng dữ liệu mẫu giả lập)
+      setClients([]);
+      setIsUsingCache(false);
     } finally {
       setLoading(false);
     }
@@ -88,6 +60,8 @@ export default function AdminClientsPage() {
     if (spent >= 12000000) return 'Gold Partner';
     return 'Standard Business';
   };
+
+  const isUnauthorized = error?.toLowerCase().includes('unauthorized') || error?.includes('401');
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/80 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
@@ -106,31 +80,58 @@ export default function AdminClientsPage() {
 
         <button
           onClick={fetchClients}
-          title="Làm mới"
+          title="Làm mới dữ liệu"
           className="p-2.5 text-stone-600 hover:bg-stone-100 rounded-xl transition cursor-pointer self-start md:self-auto"
         >
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      {error && (
+      {/* Thông báo khi đang dùng cache ngoại tuyến lúc mất mạng */}
+      {isUsingCache && (
+        <div className="mb-4 bg-sky-50 border border-sky-200 text-sky-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <WifiOff size={15} className="text-sky-600 shrink-0" />
+            <span>
+              Mất kết nối máy chủ API. Đang hiển thị danh sách doanh nghiệp đối tác từ bộ nhớ đệm gần nhất.
+            </span>
+          </div>
+          <button
+            onClick={fetchClients}
+            className="font-semibold text-sky-900 hover:text-sky-950 underline self-end sm:self-auto shrink-0 cursor-pointer"
+          >
+            Thử kết nối lại
+          </button>
+        </div>
+      )}
+
+      {/* Thông báo lỗi khi không có dữ liệu cache */}
+      {error && !isUsingCache && (
         <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <AlertCircle size={15} className="text-amber-600 shrink-0" />
             <span>
-              {error.toLowerCase().includes('unauthorized') || error.includes('401')
-                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized). Đang hiển thị danh sách đối tác mẫu.'
-                : `${error} - Đang hiển thị dữ liệu dự phòng.`}
+              {isUnauthorized
+                ? 'Phiên đăng nhập quản trị chưa được xác thực hoặc đã hết hạn (Unauthorized).'
+                : `Không thể kết nối đến máy chủ API: ${error}.`}
             </span>
           </div>
-          {(error.toLowerCase().includes('unauthorized') || error.includes('401')) && (
-            <Link
-              to="/login"
-              className="font-semibold text-amber-900 hover:text-amber-950 underline self-end sm:self-auto shrink-0"
+          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+            {isUnauthorized && (
+              <Link
+                to="/login"
+                className="font-semibold text-amber-900 hover:text-amber-950 underline"
+              >
+                Đăng nhập lại
+              </Link>
+            )}
+            <button
+              onClick={fetchClients}
+              className="flex items-center gap-1 font-semibold text-amber-800 hover:text-amber-950 cursor-pointer"
             >
-              Đăng nhập lại
-            </Link>
-          )}
+              <RefreshCw size={12} /> Thử lại
+            </button>
+          </div>
         </div>
       )}
 
@@ -158,7 +159,9 @@ export default function AdminClientsPage() {
             ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center text-stone-400">
-                  Chưa có doanh nghiệp đối tác nào được đăng ký.
+                  {error
+                    ? 'Không có dữ liệu đối tác để hiển thị khi mất kết nối mạng.'
+                    : 'Chưa có doanh nghiệp đối tác nào đăng ký trong hệ thống.'}
                 </td>
               </tr>
             ) : (

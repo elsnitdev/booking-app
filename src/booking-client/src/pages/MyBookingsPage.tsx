@@ -21,9 +21,11 @@ import { bookingRequest } from '../requests/bookingRequest';
 import { ApiError } from '../lib/httpClient';
 import type { UserProfile } from '../types/auth';
 import type { BookingItem } from '../types/booking';
+import { useToast } from '../context/ToastContext';
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -90,12 +92,12 @@ export default function MyBookingsPage() {
       setBookings(prev => 
         prev.map(b => b.id === bookingId ? { ...b, status: 'Cancelled' } : b)
       );
-      alert('Đã hủy lịch đặt phòng thành công.');
+      toast.success('Đã hủy lịch đặt phòng thành công.');
     } catch (err) {
       if (err instanceof ApiError) {
-        alert(err.message || 'Hủy phòng thất bại. Vui lòng thử lại.');
+        toast.error(err.message || 'Hủy phòng thất bại. Vui lòng thử lại.');
       } else {
-        alert('Lỗi kết nối khi gửi yêu cầu hủy phòng.');
+        toast.error('Lỗi kết nối khi gửi yêu cầu hủy phòng.');
       }
     } finally {
       setCancellingId(null);

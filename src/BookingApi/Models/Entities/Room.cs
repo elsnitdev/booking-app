@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace BookingApi.Models.Entities
 {
@@ -24,6 +25,7 @@ namespace BookingApi.Models.Entities
         public int CleanupTimeMinutes { get; set; } = 15;
 
         // Concurrency token for Optimistic Locking (chống đụng độ)
+        [Timestamp]
         public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         // Navigation property
