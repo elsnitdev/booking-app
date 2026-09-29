@@ -11,6 +11,8 @@ import { ToastProvider } from './context/ToastContext';
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage'));
 const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
 const AdminRoomsPage = lazy(() => import('./pages/admin/AdminRoomsPage'));
+const AdminAddRoomPage = lazy(() => import('./pages/admin/AdminAddRoomPage'));
+const AdminRoomDetailPage = lazy(() => import('./pages/admin/AdminRoomDetailPage'));
 const AdminClientsPage = lazy(() => import('./pages/admin/AdminClientsPage'));
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
           <Route index element={<AdminOverviewPage />} />
           <Route path="bookings" element={<AdminBookingsPage />} />
           <Route path="rooms" element={<AdminRoomsPage />} />
+          <Route path="rooms/new" element={<AdminAddRoomPage />} />
+          <Route path="rooms/:id" element={<AdminRoomDetailPage />} />
           <Route path="clients" element={<AdminClientsPage />} />
         </Route>
       </Routes>

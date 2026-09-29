@@ -8,14 +8,14 @@ import {
   Presentation,
   Video,
   Wifi,
-  X,
   Loader2,
   RefreshCw,
   AlertCircle,
-  WifiOff
+  WifiOff,
+  ExternalLink
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
-import type { AdminRoomItem, RoomManagePayload } from '../../types/admin';
+import type { AdminRoomItem } from '../../types/admin';
 import { useAdminToast } from '../../context/AdminToastContext';
 
 export default function AdminRoomsPage() {
@@ -23,21 +23,6 @@ export default function AdminRoomsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUsingCache, setIsUsingCache] = useState(false);
-
-  // Modal State
-  const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
-  const [editingRoom, setEditingRoom] = useState<AdminRoomItem | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form State
-  const [formName, setFormName] = useState('');
-  const [formType, setFormType] = useState('Executive Boardroom');
-  const [formCapacity, setFormCapacity] = useState(12);
-  const [formRate, setFormRate] = useState(350000);
-  const [formLocation, setFormLocation] = useState('');
-  const [formProjector, setFormProjector] = useState(true);
-  const [formWhiteboard, setFormWhiteboard] = useState(true);
-  const [formVideo, setFormVideo] = useState(true);
 
   const { showToast } = useAdminToast();
 
@@ -86,68 +71,6 @@ export default function AdminRoomsPage() {
     fetchRooms();
   }, [fetchRooms]);
 
-  const openAddRoomModal = () => {
-    setEditingRoom(null);
-    setFormName('');
-    setFormType('Executive Boardroom');
-    setFormCapacity(12);
-    setFormRate(350000);
-    setFormLocation('');
-    setFormProjector(true);
-    setFormWhiteboard(true);
-    setFormVideo(true);
-    setIsRoomModalOpen(true);
-  };
-
-  const openEditRoomModal = (room: AdminRoomItem) => {
-    setEditingRoom(room);
-    setFormName(room.name);
-    setFormType(room.roomType);
-    setFormCapacity(room.capacity);
-    setFormRate(room.hourlyRate);
-    setFormLocation(room.location);
-    setFormProjector(room.hasProjector);
-    setFormWhiteboard(room.hasWhiteboard);
-    setFormVideo(room.hasVideoConference);
-    setIsRoomModalOpen(true);
-  };
-
-  const handleSaveRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formName.trim()) return;
-
-    setSubmitting(true);
-    const payload: RoomManagePayload = {
-      name: formName.trim(),
-      roomType: formType,
-      capacity: Number(formCapacity),
-      hourlyRate: Number(formRate),
-      location: formLocation.trim(),
-      hasProjector: formProjector,
-      hasWhiteboard: formWhiteboard,
-      hasVideoConference: formVideo,
-      cleanupTimeMinutes: 15,
-      isActive: editingRoom ? editingRoom.isActive : true,
-    };
-
-    try {
-      if (editingRoom) {
-        await adminRequest.updateRoom(editingRoom.id, payload);
-        showToast(`Đã cập nhật thông tin "${formName}" thành công!`, 'success');
-      } else {
-        await adminRequest.createRoom(payload);
-        showToast(`Đã tạo mới không gian "${formName}" thành công!`, 'success');
-      }
-      setIsRoomModalOpen(false);
-      await fetchRooms();
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Lỗi khi lưu phòng họp.';
-      showToast(`Không thể lưu phòng khi mất kết nối máy chủ: ${errorMsg}`, 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleToggleRoomStatus = async (roomId: string) => {
     try {
       await adminRequest.toggleRoomStatus(roomId);
@@ -192,13 +115,13 @@ export default function AdminRoomsPage() {
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button
-            onClick={openAddRoomModal}
+          <Link
+            to="/admin/rooms/new"
             className="inline-flex items-center gap-2 bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] hover:text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition active:scale-[0.98] cursor-pointer"
           >
             <Plus size={15} />
             <span>Thêm Không Gian Mới</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -263,19 +186,19 @@ export default function AdminRoomsPage() {
               ? 'Không có dữ liệu phòng để hiển thị khi mất kết nối mạng.'
               : 'Chưa có không gian phòng họp nào trong hệ thống.'}
           </p>
-          <button
-            onClick={openAddRoomModal}
+          <Link
+            to="/admin/rooms/new"
             className="mt-4 inline-flex items-center gap-2 bg-[#c59b48] hover:bg-[#b88e38] text-[#0b1220] px-4 py-2 rounded-xl text-xs font-semibold transition"
           >
             <Plus size={14} /> Thêm phòng đầu tiên
-          </button>
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {rooms.map((room) => (
             <div
               key={room.id}
-              className={`bg-white rounded-2xl border p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition flex flex-col justify-between ${
+              className={`bg-white rounded-2xl border p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition flex flex-col justify-between hover:border-[#c59b48]/50 ${
                 room.isActive
                   ? 'border-stone-200/90'
                   : 'border-stone-200 opacity-60 bg-stone-50/50'
@@ -287,9 +210,14 @@ export default function AdminRoomsPage() {
                     <span className="text-[10px] uppercase font-semibold tracking-wider text-[#a67c2e] bg-[#c59b48]/10 px-2.5 py-0.5 rounded-full border border-[#c59b48]/20">
                       {room.roomType}
                     </span>
-                    <h3 className="text-xl font-serif font-normal text-stone-900 mt-2">
-                      {room.name}
-                    </h3>
+                    <Link
+                      to={`/admin/rooms/${room.id}`}
+                      className="group block mt-2"
+                    >
+                      <h3 className="text-xl font-serif font-normal text-stone-900 group-hover:text-[#a67c2e] transition">
+                        {room.name}
+                      </h3>
+                    </Link>
                   </div>
                   <span
                     className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -359,184 +287,25 @@ export default function AdminRoomsPage() {
                 </button>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditRoomModal(room)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold bg-stone-100 hover:bg-[#c59b48] hover:text-[#0b1220] text-stone-700 px-3 py-1.5 rounded-lg transition cursor-pointer"
+                  <Link
+                    to={`/admin/rooms/${room.id}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-stone-100 hover:bg-[#c59b48] hover:text-[#0b1220] text-stone-700 px-3 py-1.5 rounded-lg transition cursor-pointer"
                   >
-                    <Edit3 size={13} /> Sửa
-                  </button>
+                    <Edit3 size={13} />
+                    <span>Chi Tiết & Sửa</span>
+                  </Link>
                   <Link
                     to={`/room/${room.id}`}
                     target="_blank"
                     className="inline-flex items-center gap-1 text-xs font-medium text-stone-500 hover:text-stone-900 px-2 py-1.5 transition"
                   >
-                    Xem trang khách
+                    <ExternalLink size={12} />
+                    <span>Trang khách</span>
                   </Link>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* ======================= MODAL THÊM / SỬA PHÒNG HỌP ======================= */}
-      {isRoomModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-stone-200 relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setIsRoomModalOpen(false)}
-              className="absolute top-5 right-5 text-stone-400 hover:text-stone-700 transition cursor-pointer"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="mb-5">
-              <span className="text-[10px] uppercase font-semibold tracking-[0.16em] text-[#a67c2e] block">
-                {editingRoom ? 'Chỉnh Sửa Thông Tin' : 'Khởi Tạo Không Gian'}
-              </span>
-              <h3 className="text-xl font-serif font-normal text-stone-900">
-                {editingRoom
-                  ? `Sửa Không Gian: ${editingRoom.name}`
-                  : 'Thêm Phòng Họp & Workshop Mới'}
-              </h3>
-            </div>
-
-            <form onSubmit={handleSaveRoom} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-stone-700 font-medium mb-1">
-                  Tên phòng họp
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="VD: Phòng Hội Thảo Boardroom Alpha 2"
-                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Loại không gian
-                  </label>
-                  <select
-                    value={formType}
-                    onChange={(e) => setFormType(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2.5 outline-none focus:border-[#c59b48] text-stone-800 cursor-pointer"
-                  >
-                    <option value="Executive Boardroom">Executive Boardroom (VIP)</option>
-                    <option value="Workshop Studio">Workshop Studio (Sáng tạo)</option>
-                    <option value="Strategy Room">Strategy Room (Chiến lược)</option>
-                    <option value="Creative Space">Creative Space (Thảo luận)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Sức chứa tối đa (người)
-                  </label>
-                  <input
-                    type="number"
-                    min="2"
-                    max="100"
-                    required
-                    value={formCapacity}
-                    onChange={(e) => setFormCapacity(Number(e.target.value))}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Giá thuê niêm yết (VNĐ / giờ)
-                  </label>
-                  <input
-                    type="number"
-                    step="50000"
-                    min="100000"
-                    required
-                    value={formRate}
-                    onChange={(e) => setFormRate(Number(e.target.value))}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-stone-700 font-medium mb-1">
-                    Vị trí phòng / Tầng
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formLocation}
-                    onChange={(e) => setFormLocation(e.target.value)}
-                    placeholder="VD: Tầng 3, Tòa nhà Alpha, Q.1, TP.HCM"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800"
-                  />
-                </div>
-              </div>
-
-              {/* Checkboxes tiện ích */}
-              <div className="pt-2">
-                <span className="block text-stone-700 font-medium mb-2">
-                  Trang thiết bị & Tiện nghi đi kèm
-                </span>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-stone-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formProjector}
-                      onChange={(e) => setFormProjector(e.target.checked)}
-                      className="accent-[#c59b48] w-4 h-4 rounded"
-                    />
-                    <span>Màn chiếu LED 4K / Máy chiếu siêu nét</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-stone-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formWhiteboard}
-                      onChange={(e) => setFormWhiteboard(e.target.checked)}
-                      className="accent-[#c59b48] w-4 h-4 rounded"
-                    />
-                    <span>Bảng kính & Bút dạ thảo luận chuyên dụng</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-stone-600 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formVideo}
-                      onChange={(e) => setFormVideo(e.target.checked)}
-                      className="accent-[#c59b48] w-4 h-4 rounded"
-                    />
-                    <span>Hệ thống Hội nghị truyền hình trực tuyến (Zoom/Teams Rooms)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-5 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => setIsRoomModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition cursor-pointer font-medium"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] hover:text-white transition font-semibold cursor-pointer active:scale-98 shadow-sm flex items-center gap-2 disabled:opacity-70"
-                >
-                  {submitting && <Loader2 size={13} className="animate-spin" />}
-                  <span>{editingRoom ? 'Lưu Thay Đổi' : 'Tạo Không Gian'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>
