@@ -1,30 +1,45 @@
 import { Link, useNavigate } from "react-router-dom";
 import { LogIn, UserPlus, Calendar, LogOut, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
+import { authRequest } from "../requests";
+import { useToast } from "../context/ToastContext";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
-
+  const { toast } = useToast();
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
+    authRequest
+      .getProfile()
+      .then((res) => {
+        if (res.data) {
+          setIsLoggedIn(true);
+        }
+      })
+      .catch(() => {
+        // Nếu chưa đăng nhập hoặc cookie hết hạn, server trả về 401
+        setIsLoggedIn(false);
+      });
   }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    setIsLoggedIn(false);
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // 1. Gọi API để Server xóa HttpOnly Cookie
+      await authRequest.logout();
+    } catch (error) {
+      console.error("Lỗi khi đăng xuất từ server:", error);
+    } finally {
+      // 2. Dù API thành công hay gặp lỗi mạng, phía Client vẫn chủ động dọn dẹp
+      localStorage.removeItem("token");
+      setIsLoggedIn(false);
+      toast.success("Đã đăng xuất thành công!");
+      navigate("/login");
+    }
   };
-
   return (
     <nav className="bg-[#0b1220]/95 backdrop-blur-md text-[#f8fafc] px-6 py-4 border-b border-stone-800/70 sticky top-0 z-50 transition-colors">
       <div className="container mx-auto flex justify-between items-center max-w-5xl">
         {/* Brand Typographic Mark */}
-        <Link
-          to="/"
-          className="group flex items-baseline gap-2 transition"
-        >
+        <Link to="/" className="group flex items-baseline gap-2 transition">
           <span className="text-2xl sm:text-3xl font-serif font-medium tracking-tight text-[#c59b48] group-hover:text-[#dcb35f] transition italic">
             Alpha
           </span>
@@ -48,14 +63,14 @@ export default function Navbar() {
               to="/register"
               className="text-stone-300 hover:text-white px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition rounded-lg hover:bg-stone-800/50"
             >
-              <UserPlus size={15} className="text-[#c59b48]" /> 
+              <UserPlus size={15} className="text-[#c59b48]" />
               <span>Đăng ký</span>
             </Link>
             <Link
               to="/login"
               className="bg-[#c59b48] hover:bg-[#b58b38] text-[#0b1220] px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition rounded-lg shadow-sm hover:shadow active:scale-[0.98]"
             >
-              <LogIn size={15} /> 
+              <LogIn size={15} />
               <span>Đăng nhập</span>
             </Link>
           </div>

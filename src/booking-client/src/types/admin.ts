@@ -46,6 +46,37 @@ export interface AdminBookingItem {
   createdAt?: string;
 }
 
+// Interface hình ảnh phòng
+export interface AdminRoomImage {
+  id: string;
+  imageUrl: string;
+  caption?: string;
+  tag?: string;
+  isPrimary: boolean;
+  displayOrder: number;
+}
+
+// Interface tiện ích phòng
+export interface AdminRoomAmenity {
+  id: string;
+  name: string;
+  category: string;
+  icon: string;
+  description?: string;
+  customNote?: string;
+  quantity: number;
+}
+
+// Interface danh mục tiện ích dùng chung
+export interface AmenityItem {
+  id: string;
+  name: string;
+  category: string;
+  icon: string;
+  description?: string;
+  isActive: boolean;
+}
+
 // Interface quản lý phòng
 export interface AdminRoomItem {
   id: string;
@@ -54,11 +85,15 @@ export interface AdminRoomItem {
   roomType: string;
   hourlyRate: number;
   location: string;
+  description?: string;
+  coverImageUrl?: string;
   hasProjector: boolean;
   hasWhiteboard: boolean;
   hasVideoConference: boolean;
   cleanupTimeMinutes?: number;
   isActive: boolean;
+  images?: AdminRoomImage[];
+  amenities?: AdminRoomAmenity[];
 }
 
 // Payload khi tạo mới hoặc cập nhật phòng
@@ -68,11 +103,26 @@ export interface RoomManagePayload {
   roomType: string;
   hourlyRate: number;
   location: string;
+  description?: string;
+  coverImageUrl?: string;
   hasProjector: boolean;
   hasWhiteboard: boolean;
   hasVideoConference: boolean;
   cleanupTimeMinutes?: number;
   isActive?: boolean;
+  images?: Array<{
+    id?: string;
+    imageUrl: string;
+    caption?: string;
+    tag?: string;
+    isPrimary?: boolean;
+    displayOrder?: number;
+  }>;
+  amenities?: Array<{
+    amenityId: string;
+    customNote?: string;
+    quantity?: number;
+  }>;
 }
 
 // Interface cho Doanh nghiệp đối tác

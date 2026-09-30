@@ -1,7 +1,10 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BookingApi.Data;
+using BookingApi.Models.DTOs;
 using BookingApi.Models.Responses;
 
 namespace BookingApi.Controllers
@@ -20,15 +23,100 @@ namespace BookingApi.Controllers
     [HttpGet]
     public async Task<IActionResult> GetRooms()
     {
-      var rooms = await _context.Rooms.ToListAsync();
-      return Ok(ApiResponse<object>.SuccessResult(rooms, "Lấy danh sách phòng thành công."));
+      var rooms = await _context.Rooms
+        .Include(r => r.Images)
+        .Include(r => r.RoomAmenities)
+          .ThenInclude(ra => ra.Amenity)
+        .Where(r => r.IsActive)
+        .OrderBy(r => r.Name)
+        .Select(r => new RoomResponseDto
+        {
+          Id = r.Id,
+          Name = r.Name,
+          Capacity = r.Capacity,
+          IsActive = r.IsActive,
+          RoomType = r.RoomType,
+          HourlyRate = r.HourlyRate,
+          Location = r.Location,
+          Description = r.Description,
+          CoverImageUrl = r.CoverImageUrl,
+          HasProjector = r.HasProjector,
+          HasWhiteboard = r.HasWhiteboard,
+          HasVideoConference = r.HasVideoConference,
+          CleanupTimeMinutes = r.CleanupTimeMinutes,
+          Images = r.Images.OrderBy(i => i.DisplayOrder).Select(i => new RoomImageDto
+          {
+            Id = i.Id,
+            ImageUrl = i.ImageUrl,
+            Caption = i.Caption,
+            Tag = i.Tag,
+            IsPrimary = i.IsPrimary,
+            DisplayOrder = i.DisplayOrder
+          }).ToList(),
+          Amenities = r.RoomAmenities.Where(ra => ra.Amenity != null && ra.Amenity.IsActive).Select(ra => new AmenityDto
+          {
+            Id = ra.Amenity!.Id,
+            Name = ra.Amenity.Name,
+            Category = ra.Amenity.Category,
+            Icon = ra.Amenity.Icon,
+            Description = ra.Amenity.Description,
+            CustomNote = ra.CustomNote,
+            Quantity = ra.Quantity
+          }).ToList()
+        })
+        .ToListAsync();
+
+      return Ok(ApiResponse<List<RoomResponseDto>>.SuccessResult(rooms, "Lấy danh sách phòng thành công."));
     }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRoomById(Guid id)
     {
-      var room = await _context.Rooms.FindAsync(id);
-      if (room == null) return NotFound(ApiResponse<object>.ErrorResult("Không tìm thấy phòng."));
-      return Ok(ApiResponse<object>.SuccessResult(room, "Thành công."));
+      var r = await _context.Rooms
+        .Include(r => r.Images)
+        .Include(r => r.RoomAmenities)
+          .ThenInclude(ra => ra.Amenity)
+        .FirstOrDefaultAsync(r => r.Id == id);
+
+      if (r == null) return NotFound(ApiResponse<object>.ErrorResult("Không tìm thấy phòng."));
+
+      var dto = new RoomResponseDto
+      {
+        Id = r.Id,
+        Name = r.Name,
+        Capacity = r.Capacity,
+        IsActive = r.IsActive,
+        RoomType = r.RoomType,
+        HourlyRate = r.HourlyRate,
+        Location = r.Location,
+        Description = r.Description,
+        CoverImageUrl = r.CoverImageUrl,
+        HasProjector = r.HasProjector,
+        HasWhiteboard = r.HasWhiteboard,
+        HasVideoConference = r.HasVideoConference,
+        CleanupTimeMinutes = r.CleanupTimeMinutes,
+        Images = r.Images.OrderBy(i => i.DisplayOrder).Select(i => new RoomImageDto
+        {
+          Id = i.Id,
+          ImageUrl = i.ImageUrl,
+          Caption = i.Caption,
+          Tag = i.Tag,
+          IsPrimary = i.IsPrimary,
+          DisplayOrder = i.DisplayOrder
+        }).ToList(),
+        Amenities = r.RoomAmenities.Where(ra => ra.Amenity != null && ra.Amenity.IsActive).Select(ra => new AmenityDto
+        {
+          Id = ra.Amenity!.Id,
+          Name = ra.Amenity.Name,
+          Category = ra.Amenity.Category,
+          Icon = ra.Amenity.Icon,
+          Description = ra.Amenity.Description,
+          CustomNote = ra.CustomNote,
+          Quantity = ra.Quantity
+        }).ToList()
+      };
+
+      return Ok(ApiResponse<RoomResponseDto>.SuccessResult(dto, "Thành công."));
     }
     // Mẹo nhỏ: Setup tạm 1 API để bạn tạo nhanh Phòng giả lập nhằm Test API đặt phòng
     [HttpPost("setup-test-room")]

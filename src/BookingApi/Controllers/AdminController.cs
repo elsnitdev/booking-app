@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BookingApi.Controllers
 {
-  [Authorize] // yêu cầu người dùng phải đăng nhập để truy cập 
+  [Authorize(Roles = "Admin")] // yêu cầu người dùng phải đăng nhập để truy cập 
   [Route("api/[controller]")]
   [ApiController]
   public class AdminController : ControllerBase
@@ -137,11 +137,51 @@ namespace BookingApi.Controllers
     public async Task<IActionResult> GetAllRooms()
     {
       var rooms = await _context.Rooms
-      .OrderByDescending(r => r.IsActive)
-      .ThenBy(r => r.Name)
-      .ToListAsync();
-      return Ok(ApiResponse<object>.SuccessResult(rooms, "Lấy danh mục phòng thành công."));
+        .Include(r => r.Images)
+        .Include(r => r.RoomAmenities)
+          .ThenInclude(ra => ra.Amenity)
+        .OrderByDescending(r => r.IsActive)
+        .ThenBy(r => r.Name)
+        .Select(r => new RoomResponseDto
+        {
+          Id = r.Id,
+          Name = r.Name,
+          Capacity = r.Capacity,
+          IsActive = r.IsActive,
+          RoomType = r.RoomType,
+          HourlyRate = r.HourlyRate,
+          Location = r.Location,
+          Description = r.Description,
+          CoverImageUrl = r.CoverImageUrl,
+          HasProjector = r.HasProjector,
+          HasWhiteboard = r.HasWhiteboard,
+          HasVideoConference = r.HasVideoConference,
+          CleanupTimeMinutes = r.CleanupTimeMinutes,
+          Images = r.Images.OrderBy(i => i.DisplayOrder).Select(i => new RoomImageDto
+          {
+            Id = i.Id,
+            ImageUrl = i.ImageUrl,
+            Caption = i.Caption,
+            Tag = i.Tag,
+            IsPrimary = i.IsPrimary,
+            DisplayOrder = i.DisplayOrder
+          }).ToList(),
+          Amenities = r.RoomAmenities.Where(ra => ra.Amenity != null && ra.Amenity.IsActive).Select(ra => new AmenityDto
+          {
+            Id = ra.Amenity!.Id,
+            Name = ra.Amenity.Name,
+            Category = ra.Amenity.Category,
+            Icon = ra.Amenity.Icon,
+            Description = ra.Amenity.Description,
+            CustomNote = ra.CustomNote,
+            Quantity = ra.Quantity
+          }).ToList()
+        })
+        .ToListAsync();
+
+      return Ok(ApiResponse<List<RoomResponseDto>>.SuccessResult(rooms, "Lấy danh mục phòng thành công."));
     }
+
     [HttpPost("rooms")]
     public async Task<IActionResult> CreateRoom([FromBody] RoomManageDto dto)
     {
@@ -149,6 +189,7 @@ namespace BookingApi.Controllers
       {
         return BadRequest(ApiResponse<object>.ErrorResult("Dữ liệu nhập không hợp lệ."));
       }
+
       var room = new Room
       {
         Id = Guid.NewGuid(),
@@ -157,37 +198,132 @@ namespace BookingApi.Controllers
         RoomType = dto.RoomType,
         HourlyRate = dto.HourlyRate,
         Location = dto.Location,
+        Description = dto.Description,
+        CoverImageUrl = dto.CoverImageUrl,
         HasProjector = dto.HasProjector,
         HasWhiteboard = dto.HasWhiteboard,
         HasVideoConference = dto.HasVideoConference,
         CleanupTimeMinutes = dto.CleanupTimeMinutes,
         IsActive = dto.IsActive
       };
+
+      // Xử lý danh sách hình ảnh
+      if (dto.Images != null && dto.Images.Count > 0)
+      {
+        for (int i = 0; i < dto.Images.Count; i++)
+        {
+          var img = dto.Images[i];
+          room.Images.Add(new RoomImage
+          {
+            Id = Guid.NewGuid(),
+            RoomId = room.Id,
+            ImageUrl = img.ImageUrl,
+            Caption = img.Caption,
+            Tag = img.Tag ?? "Overview",
+            IsPrimary = img.IsPrimary || (i == 0 && string.IsNullOrEmpty(room.CoverImageUrl)),
+            DisplayOrder = img.DisplayOrder > 0 ? img.DisplayOrder : i,
+            CreatedAt = DateTime.UtcNow
+          });
+        }
+
+        if (string.IsNullOrEmpty(room.CoverImageUrl))
+        {
+          room.CoverImageUrl = dto.Images[0].ImageUrl;
+        }
+      }
+
+      // Xử lý danh sách tiện ích phòng
+      if (dto.Amenities != null && dto.Amenities.Count > 0)
+      {
+        foreach (var a in dto.Amenities)
+        {
+          room.RoomAmenities.Add(new RoomAmenity
+          {
+            RoomId = room.Id,
+            AmenityId = a.AmenityId,
+            CustomNote = a.CustomNote,
+            Quantity = a.Quantity > 0 ? a.Quantity : 1
+          });
+        }
+      }
+
       _context.Rooms.Add(room);
       await _context.SaveChangesAsync();
       return Ok(ApiResponse<object>.SuccessResult(room, "Tạo phòng họp mới thành công!"));
     }
+
     [HttpPut("rooms/{id}")]
     public async Task<IActionResult> UpdateRoom(Guid id, [FromBody] RoomManageDto dto)
     {
-      var room = await _context.Rooms.FindAsync(id);
+      var room = await _context.Rooms
+        .Include(r => r.Images)
+        .Include(r => r.RoomAmenities)
+        .FirstOrDefaultAsync(r => r.Id == id);
+
       if (room == null)
       {
         return NotFound(ApiResponse<string>.ErrorResult("Không tìm thấy phòng họp cần sửa."));
       }
+
       room.Name = dto.Name;
       room.Capacity = dto.Capacity;
       room.RoomType = dto.RoomType;
       room.HourlyRate = dto.HourlyRate;
       room.Location = dto.Location;
+      room.Description = dto.Description;
+      room.CoverImageUrl = dto.CoverImageUrl;
       room.HasProjector = dto.HasProjector;
       room.HasWhiteboard = dto.HasWhiteboard;
       room.HasVideoConference = dto.HasVideoConference;
       room.CleanupTimeMinutes = dto.CleanupTimeMinutes;
       room.IsActive = dto.IsActive;
+
+      // Cập nhật Images nếu có truyền lên
+      if (dto.Images != null)
+      {
+        _context.RoomImages.RemoveRange(room.Images);
+        for (int i = 0; i < dto.Images.Count; i++)
+        {
+          var img = dto.Images[i];
+          _context.RoomImages.Add(new RoomImage
+          {
+            Id = Guid.NewGuid(),
+            RoomId = room.Id,
+            ImageUrl = img.ImageUrl,
+            Caption = img.Caption,
+            Tag = img.Tag ?? "Overview",
+            IsPrimary = img.IsPrimary || (i == 0 && string.IsNullOrEmpty(room.CoverImageUrl)),
+            DisplayOrder = img.DisplayOrder > 0 ? img.DisplayOrder : i,
+            CreatedAt = DateTime.UtcNow
+          });
+        }
+
+        if (string.IsNullOrEmpty(room.CoverImageUrl) && dto.Images.Count > 0)
+        {
+          room.CoverImageUrl = dto.Images[0].ImageUrl;
+        }
+      }
+
+      // Cập nhật Amenities nếu có truyền lên
+      if (dto.Amenities != null)
+      {
+        _context.RoomAmenities.RemoveRange(room.RoomAmenities);
+        foreach (var a in dto.Amenities)
+        {
+          _context.RoomAmenities.Add(new RoomAmenity
+          {
+            RoomId = room.Id,
+            AmenityId = a.AmenityId,
+            CustomNote = a.CustomNote,
+            Quantity = a.Quantity > 0 ? a.Quantity : 1
+          });
+        }
+      }
+
       await _context.SaveChangesAsync();
       return Ok(ApiResponse<object>.SuccessResult(room, "Cập nhật phòng thành công"));
     }
+
     [HttpPut("rooms/{id}/toggle-status")]
     public async Task<IActionResult> ToggleRoomStatus(Guid id)
     {
@@ -200,6 +336,18 @@ namespace BookingApi.Controllers
       await _context.SaveChangesAsync();
       var statusStr = room.IsActive ? "Khả dụng" : "Tạm ngưng phục vụ";
       return Ok(ApiResponse<bool>.SuccessResult(room.IsActive, $"Đã chuyển phòng sang trạng thái: {statusStr}."));
+    }
+
+    // Lấy toàn bộ danh mục tiện nghi dùng chung
+    [HttpGet("amenities")]
+    public async Task<IActionResult> GetAllAmenities()
+    {
+      var amenities = await _context.Amenities
+        .Where(a => a.IsActive)
+        .OrderBy(a => a.Category)
+        .ThenBy(a => a.Name)
+        .ToListAsync();
+      return Ok(ApiResponse<List<Amenity>>.SuccessResult(amenities, "Lấy danh mục tiện ích thành công."));
     }
     // ================= 4. QUẢN LÝ DOANH NGHIỆP THÀNH VIÊN =================
     [HttpGet("users")]

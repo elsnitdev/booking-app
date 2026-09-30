@@ -18,45 +18,58 @@ import {
   Wifi,
   X,
   TrendingUp,
-  Maximize2
+  Maximize2,
+  Tv,
+  Mic,
+  Coffee,
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  Check
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
 import { roomRequest } from '../../requests/roomRequest';
-import type { AdminRoomItem, AdminBookingItem, RoomManagePayload } from '../../types/admin';
+import type {
+  AdminRoomItem,
+  AdminBookingItem,
+  RoomManagePayload,
+  AdminRoomImage,
+  AmenityItem
+} from '../../types/admin';
 import { useAdminToast } from '../../context/AdminToastContext';
 
 // Bộ ảnh mẫu kiến trúc phòng họp sang trọng chuẩn Quiet Luxury
 const DEFAULT_GALLERY = [
   {
-    id: 1,
+    id: '1',
     title: 'Góc Toàn Cảnh Phòng Họp',
     tag: 'Main Overview',
     url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1200&auto=format&fit=crop',
     description: 'Bố cục bàn hội đàm chữ U với ghế da công thái học cao cấp và ánh sáng tự nhiên từ vách kính trần.'
   },
   {
-    id: 2,
+    id: '2',
     title: 'Góc Trực Diện Bàn Hội Đàm',
     tag: 'Boardroom Setup',
     url: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=1200&auto=format&fit=crop',
     description: 'Bàn gỗ óc chó tự nhiên tích hợp cổng cắm sạc không dây và màn hình phụ điều khiển từng vị trí.'
   },
   {
-    id: 3,
+    id: '3',
     title: 'Khu Vực Trình Chiếu & Màn Hình 4K',
     tag: 'Presentation Angle',
     url: 'https://images.unsplash.com/photo-1572025442646-866d16c84a54?q=80&w=1200&auto=format&fit=crop',
     description: 'Màn hình LED 98 inch độ tương phản cao, góc nhìn rộng phục vụ hội đàm video trực tuyến đa điểm.'
   },
   {
-    id: 4,
+    id: '4',
     title: 'Góc Thảo Luận & Studio Sáng Tạo',
     tag: 'Creative Corner',
     url: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=1200&auto=format&fit=crop',
     description: 'Bảng kính từ tính di động và khu vực sofa thư giãn dành cho các phiên trao đổi nhóm nhanh.'
   },
   {
-    id: 5,
+    id: '5',
     title: 'Quầy Teabreak & Sảnh Chờ Riêng',
     tag: 'Lounge & Refreshment',
     url: 'https://images.unsplash.com/photo-1505409859467-3a796fd5798e?q=80&w=1200&auto=format&fit=crop',
@@ -82,8 +95,22 @@ export default function AdminRoomDetailPage() {
   const [location, setLocation] = useState('');
   const [cleanupTimeMinutes, setCleanupTimeMinutes] = useState(15);
   const [isActive, setIsActive] = useState(true);
+  const [description, setDescription] = useState('');
 
-  // Amenities
+  // Dynamic Images & Amenities
+  const [roomImages, setRoomImages] = useState<AdminRoomImage[]>([]);
+  const [availableAmenities, setAvailableAmenities] = useState<AmenityItem[]>([]);
+  const [selectedAmenities, setSelectedAmenities] = useState<
+    Record<string, { selected: boolean; customNote: string }>
+  >({});
+
+  // Quản lý ảnh
+  const [showImageManager, setShowImageManager] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState('');
+  const [newImageCaption, setNewImageCaption] = useState('');
+  const [newImageTag, setNewImageTag] = useState('Góc nhìn');
+
+  // Amenities legacy fallback
   const [hasProjector, setHasProjector] = useState(true);
   const [hasWhiteboard, setHasWhiteboard] = useState(true);
   const [hasVideoConference, setHasVideoConference] = useState(true);
@@ -92,12 +119,39 @@ export default function AdminRoomDetailPage() {
   const [upcomingBookings, setUpcomingBookings] = useState<AdminBookingItem[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
 
+  const renderAmenityIcon = (iconName: string) => {
+    switch (iconName?.toLowerCase()) {
+      case 'monitor': return <Monitor size={16} className="text-[#a67c2e]" />;
+      case 'tv': return <Tv size={16} className="text-[#a67c2e]" />;
+      case 'maximize-2':
+      case 'maximize': return <Maximize2 size={16} className="text-[#a67c2e]" />;
+      case 'mic': return <Mic size={16} className="text-[#a67c2e]" />;
+      case 'video': return <Video size={16} className="text-[#a67c2e]" />;
+      case 'presentation': return <Presentation size={16} className="text-[#a67c2e]" />;
+      case 'wifi': return <Wifi size={16} className="text-[#a67c2e]" />;
+      case 'coffee': return <Coffee size={16} className="text-[#a67c2e]" />;
+      default: return <Sparkles size={16} className="text-[#a67c2e]" />;
+    }
+  };
+
   // Tải dữ liệu phòng
   const loadRoomData = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      // 1. Thử lấy từ API Admin
+      // 1. Lấy danh mục Master Amenities trước
+      let masterAmenities: AmenityItem[] = [];
+      try {
+        const amRes = await adminRequest.getAmenities();
+        if (amRes.data && amRes.data.length > 0) {
+          masterAmenities = amRes.data;
+          setAvailableAmenities(masterAmenities);
+        }
+      } catch (err) {
+        console.error('Không tải được danh mục tiện nghi:', err);
+      }
+
+      // 2. Thử lấy từ API Admin
       const res = await adminRequest.getRooms();
       const found = res.data?.find((r) => r.id === id);
 
@@ -108,11 +162,27 @@ export default function AdminRoomDetailPage() {
         setCapacity(found.capacity);
         setHourlyRate(found.hourlyRate);
         setLocation(found.location || 'Tầng 12, Tòa nhà Hội Nghị Alpha, Q.1');
+        setDescription(found.description || '');
         setCleanupTimeMinutes(found.cleanupTimeMinutes || 15);
         setIsActive(found.isActive);
         setHasProjector(found.hasProjector);
         setHasWhiteboard(found.hasWhiteboard);
         setHasVideoConference(found.hasVideoConference);
+
+        if (found.images && found.images.length > 0) {
+          setRoomImages(found.images);
+        }
+
+        // Đồng bộ tiện nghi đã gán vào map
+        const initialMap: Record<string, { selected: boolean; customNote: string }> = {};
+        masterAmenities.forEach((a) => {
+          const match = found.amenities?.find((ra) => ra.id === a.id);
+          initialMap[a.id] = {
+            selected: !!match,
+            customNote: match?.customNote || ''
+          };
+        });
+        setSelectedAmenities(initialMap);
       } else {
         // Fallback thử tìm bằng roomRequest công khai
         const clientRes = await roomRequest.getById(id);
@@ -125,11 +195,15 @@ export default function AdminRoomDetailPage() {
             roomType: c.roomType,
             hourlyRate: c.hourlyRate,
             location: c.location,
+            description: c.description,
+            coverImageUrl: c.coverImageUrl,
             hasProjector: !!c.hasProjector,
             hasWhiteboard: !!c.hasWhiteboard,
             hasVideoConference: !!c.hasVideoConference,
             cleanupTimeMinutes: c.cleanupTimeMinutes || 15,
             isActive: c.isActive ?? true,
+            images: c.images,
+            amenities: c.amenities,
           };
           setRoom(adminItem);
           setName(adminItem.name);
@@ -137,11 +211,26 @@ export default function AdminRoomDetailPage() {
           setCapacity(adminItem.capacity);
           setHourlyRate(adminItem.hourlyRate);
           setLocation(adminItem.location);
+          setDescription(adminItem.description || '');
           setCleanupTimeMinutes(adminItem.cleanupTimeMinutes || 15);
           setIsActive(adminItem.isActive);
           setHasProjector(adminItem.hasProjector);
           setHasWhiteboard(adminItem.hasWhiteboard);
           setHasVideoConference(adminItem.hasVideoConference);
+
+          if (c.images && c.images.length > 0) {
+            setRoomImages(c.images);
+          }
+
+          const initialMap: Record<string, { selected: boolean; customNote: string }> = {};
+          masterAmenities.forEach((a) => {
+            const match = c.amenities?.find((ra) => ra.id === a.id);
+            initialMap[a.id] = {
+              selected: !!match,
+              customNote: match?.customNote || ''
+            };
+          });
+          setSelectedAmenities(initialMap);
         }
       }
     } catch {
@@ -153,6 +242,7 @@ export default function AdminRoomDetailPage() {
         roomType: 'Executive Boardroom',
         hourlyRate: 480000,
         location: 'Tầng 21, Tháp Tài Chính Quốc Tế, Quận 1, TP.HCM',
+        description: 'Không gian phòng họp hội đồng cao cấp chuẩn 5 sao với vách kính trần đón trọn ánh sáng tự nhiên.',
         hasProjector: true,
         hasWhiteboard: true,
         hasVideoConference: true,
@@ -165,11 +255,32 @@ export default function AdminRoomDetailPage() {
       setCapacity(mockItem.capacity);
       setHourlyRate(mockItem.hourlyRate);
       setLocation(mockItem.location);
+      setDescription(mockItem.description || '');
       setCleanupTimeMinutes(mockItem.cleanupTimeMinutes || 15);
       setIsActive(mockItem.isActive);
       setHasProjector(mockItem.hasProjector);
       setHasWhiteboard(mockItem.hasWhiteboard);
       setHasVideoConference(mockItem.hasVideoConference);
+
+      const mockMaster: AmenityItem[] = [
+        { id: 'am-1', name: 'Màn hình LED hội trường lớn', category: 'Trình chiếu', icon: 'monitor', description: 'Màn hình LED P2.0 siêu lớn chuyên dụng hội nghị và sự kiện', isActive: true },
+        { id: 'am-2', name: 'Smart TV 4K & Bàn Ghế Họp Cao Cấp', category: 'Trình chiếu', icon: 'tv', description: 'TV 75-85 inch sắc nét cùng hệ bàn ghế công thái học bọc da', isActive: true },
+        { id: 'am-3', name: 'Sàn Trống Đa Năng Cho Hoạt Động', category: 'Không gian', icon: 'maximize-2', description: 'Sàn gỗ phẳng chống trơn trượt, phù hợp workshop, teambuilding, biểu diễn', isActive: true },
+        { id: 'am-4', name: 'Hệ Thống Âm Thanh & Micro Không Dây', category: 'Âm thanh', icon: 'mic', description: 'Loa vòm âm thanh hội trường và micro cài áo / không dây Shure', isActive: true },
+        { id: 'am-5', name: 'Phòng Họp Trực Tuyến Đa Điểm Zoom/Teams', category: 'Công nghệ', icon: 'video', description: 'Camera 4K bám theo người nói và hệ thống micro định hướng', isActive: true },
+        { id: 'am-6', name: 'Bảng Kính Thảo Luận Từ Tính & Flipchart', category: 'Tiện ích', icon: 'presentation', description: 'Bảng kính cường lực khổ lớn kèm bút dạ màu và nam châm giữ tài liệu', isActive: true },
+        { id: 'am-7', name: 'Đường Truyền Internet Wifi 6 Chuyên Dụng', category: 'Mạng', icon: 'wifi', description: 'Băng thông riêng biệt 1Gbps phủ sóng xuyên tường bảo mật cao', isActive: true },
+        { id: 'am-8', name: 'Quầy Cà Phê Pha Máy & Trà Teabreak', category: 'Ẩm thực', icon: 'coffee', description: 'Máy pha cà phê Delonghi tự động, trà thảo mộc hữu cơ phục vụ tại chỗ', isActive: true }
+      ];
+      setAvailableAmenities(mockMaster);
+      const mockMap: Record<string, { selected: boolean; customNote: string }> = {
+        'am-1': { selected: true, customNote: 'Màn hình LED P2.0 kích thước 300 inch siêu nét' },
+        'am-2': { selected: true, customNote: 'Smart TV 85 inch 4K và bộ bàn ghế họp 16 chỗ da bò tự nhiên' },
+        'am-4': { selected: true, customNote: '2 micro không dây Shure & âm thanh vòm chống hú' },
+        'am-5': { selected: true, customNote: 'Hệ thống Zoom Rooms bản quyền 4K' },
+        'am-7': { selected: true, customNote: 'Wifi 6 tốc độ 1Gbps riêng biệt' }
+      };
+      setSelectedAmenities(mockMap);
     } finally {
       setLoading(false);
     }
@@ -251,33 +362,127 @@ export default function AdminRoomDetailPage() {
     }
   }, [name, loadRoomBookings]);
 
+  // Thao tác với hình ảnh
+  const handleAddImage = () => {
+    if (!newImageUrl.trim()) {
+      showToast('Vui lòng nhập đường dẫn hình ảnh (URL).', 'error');
+      return;
+    }
+    const isFirst = roomImages.length === 0;
+    const newImg: AdminRoomImage = {
+      id: `img-${Date.now()}`,
+      imageUrl: newImageUrl.trim(),
+      caption: newImageCaption.trim() || `${name} - Ảnh bổ sung`,
+      tag: newImageTag.trim() || 'Visual',
+      isPrimary: isFirst,
+      displayOrder: roomImages.length
+    };
+    setRoomImages([...roomImages, newImg]);
+    setNewImageUrl('');
+    setNewImageCaption('');
+    showToast('Đã thêm hình ảnh vào bộ sưu tập của phòng!', 'success');
+  };
+
+  const handleRemoveImage = (indexToRemove: number) => {
+    const updated = roomImages.filter((_, idx) => idx !== indexToRemove);
+    if (updated.length > 0 && !updated.some((i) => i.isPrimary)) {
+      updated[0].isPrimary = true;
+    }
+    setRoomImages(updated);
+    if (activeImageIndex >= updated.length) {
+      setActiveImageIndex(Math.max(0, updated.length - 1));
+    }
+    showToast('Đã xóa hình ảnh khỏi danh sách.', 'success');
+  };
+
+  const handleSetPrimaryImage = (indexToPrimary: number) => {
+    const updated = roomImages.map((img, idx) => ({
+      ...img,
+      isPrimary: idx === indexToPrimary
+    }));
+    setRoomImages(updated);
+    setActiveImageIndex(indexToPrimary);
+    showToast('Đã chọn làm ảnh đại diện chính của phòng!', 'success');
+  };
+
   // Cập nhật thông tin phòng
   const handleSaveRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
 
     setSaving(true);
+
+    const amenityPayload = Object.entries(selectedAmenities)
+      .filter(([, val]) => val.selected)
+      .map(([amenityId, val]) => ({
+        amenityId,
+        customNote: val.customNote.trim() || undefined,
+        quantity: 1,
+      }));
+
+    const primaryImg = roomImages.find((i) => i.isPrimary)?.imageUrl || roomImages[0]?.imageUrl || '';
+
     const payload: RoomManagePayload = {
       name: name.trim(),
       roomType,
       capacity: Number(capacity),
       hourlyRate: Number(hourlyRate),
       location: location.trim(),
+      description: description.trim(),
+      coverImageUrl: primaryImg,
       hasProjector,
       hasWhiteboard,
       hasVideoConference,
       cleanupTimeMinutes: Number(cleanupTimeMinutes),
       isActive,
+      images: roomImages.map((img, idx) => ({
+        imageUrl: img.imageUrl,
+        caption: img.caption,
+        tag: img.tag,
+        isPrimary: img.isPrimary,
+        displayOrder: idx
+      })),
+      amenities: amenityPayload
     };
 
     try {
       await adminRequest.updateRoom(id, payload);
-      showToast(`Đã lưu và cập nhật thông tin "${name}" thành công!`, 'success');
-      setRoom((prev) => (prev ? { ...prev, ...payload } : null));
+      showToast(`Đã lưu và cập nhật thông tin "${name}" cùng hình ảnh & tiện ích thành công!`, 'success');
+      setRoom((prev) => (prev ? {
+        ...prev,
+        name: payload.name,
+        roomType: payload.roomType,
+        capacity: payload.capacity,
+        hourlyRate: payload.hourlyRate,
+        location: payload.location,
+        description: payload.description,
+        coverImageUrl: payload.coverImageUrl,
+        hasProjector: payload.hasProjector,
+        hasWhiteboard: payload.hasWhiteboard,
+        hasVideoConference: payload.hasVideoConference,
+        cleanupTimeMinutes: payload.cleanupTimeMinutes,
+        isActive: payload.isActive ?? prev.isActive,
+        images: roomImages,
+      } : null));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lỗi kết nối';
       showToast(`[Chế độ Xem Trước] Đã cập nhật thông tin phòng thành công trong phiên làm việc (${msg}).`, 'success');
-      setRoom((prev) => (prev ? { ...prev, ...payload } : null));
+      setRoom((prev) => (prev ? {
+        ...prev,
+        name: payload.name,
+        roomType: payload.roomType,
+        capacity: payload.capacity,
+        hourlyRate: payload.hourlyRate,
+        location: payload.location,
+        description: payload.description,
+        coverImageUrl: payload.coverImageUrl,
+        hasProjector: payload.hasProjector,
+        hasWhiteboard: payload.hasWhiteboard,
+        hasVideoConference: payload.hasVideoConference,
+        cleanupTimeMinutes: payload.cleanupTimeMinutes,
+        isActive: payload.isActive ?? prev.isActive,
+        images: roomImages,
+      } : null));
     } finally {
       setSaving(false);
     }
@@ -304,6 +509,19 @@ export default function AdminRoomDetailPage() {
       </div>
     );
   }
+
+  const galleryItems = roomImages.length > 0
+    ? roomImages.map((img, idx) => ({
+        id: img.id || String(idx),
+        title: img.caption || `${name} - Khung cảnh ${idx + 1}`,
+        tag: img.tag || (img.isPrimary ? 'Ảnh đại diện' : `Góc nhìn ${idx + 1}`),
+        url: img.imageUrl,
+        description: img.caption || 'Không gian tiêu chuẩn Atelier Quiet Luxury.'
+      }))
+    : DEFAULT_GALLERY;
+
+  const safeIndex = activeImageIndex < galleryItems.length ? activeImageIndex : 0;
+  const currentImage = galleryItems[safeIndex] || DEFAULT_GALLERY[0];
 
   return (
     <div className="space-y-8 pb-20">
@@ -388,50 +606,180 @@ export default function AdminRoomDetailPage() {
                 </span>
                 <span className="text-[11px] text-stone-400 font-light">•</span>
                 <span className="text-xs text-stone-600 font-medium">
-                  {DEFAULT_GALLERY[activeImageIndex].title}
+                  {currentImage.title}
                 </span>
               </div>
-              <button
-                onClick={() => setIsFullscreenPreview(true)}
-                className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition cursor-pointer"
-                title="Phóng to ảnh"
-              >
-                <Maximize2 size={14} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImageManager(!showImageManager)}
+                  className="px-2.5 py-1 text-[11px] font-medium text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 rounded-lg transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <ImageIcon size={13} />
+                  <span>{showImageManager ? 'Thu gọn quản lý ảnh' : `Quản lý ảnh (${roomImages.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreenPreview(true)}
+                  className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition cursor-pointer"
+                  title="Phóng to ảnh"
+                >
+                  <Maximize2 size={14} />
+                </button>
+              </div>
             </div>
+
+            {/* Quản lý danh sách hình ảnh (Mở rộng) */}
+            {showImageManager && (
+              <div className="p-4 rounded-xl bg-stone-50 border border-stone-200 space-y-4 text-xs">
+                <div>
+                  <h4 className="font-semibold text-stone-900 flex items-center gap-1.5 text-xs mb-1">
+                    <Plus size={14} className="text-[#a67c2e]" />
+                    <span>Thêm hình ảnh mới cho không gian</span>
+                  </h4>
+                  <p className="text-[11px] text-stone-500 font-light mb-3">
+                    Hỗ trợ đường dẫn URL trực tiếp từ Unsplash, CDN hoặc kho lưu trữ hình ảnh đám mây.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                    <div className="sm:col-span-6">
+                      <input
+                        type="url"
+                        placeholder="https://images.unsplash.com/... (URL ảnh)"
+                        value={newImageUrl}
+                        onChange={(e) => setNewImageUrl(e.target.value)}
+                        className="w-full bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-[#c59b48]"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <input
+                        type="text"
+                        placeholder="Góc trực diện bàn họp..."
+                        value={newImageCaption}
+                        onChange={(e) => setNewImageCaption(e.target.value)}
+                        className="w-full bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-[#c59b48]"
+                      />
+                    </div>
+                    <div className="sm:col-span-3 flex gap-2">
+                      <select
+                        value={newImageTag}
+                        onChange={(e) => setNewImageTag(e.target.value)}
+                        className="bg-white border border-stone-200 rounded-lg px-2 py-1.5 text-xs text-stone-700 focus:outline-none focus:border-[#c59b48] flex-1"
+                      >
+                        <option value="Overview">Tổng quan</option>
+                        <option value="Boardroom">Bàn họp</option>
+                        <option value="Screen">Màn chiếu</option>
+                        <option value="Lounge">Sảnh chờ</option>
+                        <option value="Workshop">Workshop</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddImage}
+                        className="px-3 py-1.5 bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] rounded-lg font-medium transition cursor-pointer shrink-0"
+                      >
+                        Thêm
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Danh sách ảnh hiện tại */}
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 block mb-2">
+                    Các ảnh đang có ({roomImages.length} ảnh):
+                  </span>
+                  {roomImages.length === 0 ? (
+                    <p className="text-[11px] text-stone-400 italic">Chưa có ảnh riêng nào. Hệ thống đang hiển thị bộ ảnh mẫu.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {roomImages.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className="flex items-center justify-between p-2 rounded-lg bg-white border border-stone-200 gap-3"
+                        >
+                          <div className="flex items-center gap-2.5 overflow-hidden">
+                            <img
+                              src={img.imageUrl}
+                              alt={img.caption}
+                              className="w-12 h-9 rounded object-cover border border-stone-200 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-stone-800 truncate text-xs">
+                                  {img.caption || `Ảnh ${idx + 1}`}
+                                </span>
+                                {img.isPrimary && (
+                                  <span className="text-[9px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-semibold shrink-0">
+                                    Ảnh chính
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-stone-400 font-mono block truncate">
+                                Tag: {img.tag || 'N/A'} • {img.imageUrl.slice(0, 45)}...
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {!img.isPrimary && (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimaryImage(idx)}
+                                className="px-2 py-1 text-[10px] text-[#a67c2e] hover:bg-[#c59b48]/10 rounded border border-[#c59b48]/30 transition cursor-pointer"
+                              >
+                                Đặt ảnh chính
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(idx)}
+                              className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                              title="Xóa ảnh"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Hero Main Photo */}
             <div className="relative h-72 sm:h-96 w-full rounded-xl overflow-hidden bg-stone-900 group">
               <img
-                src={DEFAULT_GALLERY[activeImageIndex].url}
-                alt={DEFAULT_GALLERY[activeImageIndex].title}
+                src={currentImage.url}
+                alt={currentImage.title}
                 className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
 
               <div className="absolute top-3 left-3">
                 <span className="text-[10px] font-semibold uppercase tracking-wider bg-black/60 backdrop-blur-xs text-[#e6c87e] px-2.5 py-1 rounded-full border border-[#c59b48]/30">
-                  {DEFAULT_GALLERY[activeImageIndex].tag}
+                  {currentImage.tag}
                 </span>
               </div>
 
               <div className="absolute bottom-3 left-4 right-4 text-white">
                 <h4 className="text-sm font-medium">
-                  {DEFAULT_GALLERY[activeImageIndex].title}
+                  {currentImage.title}
                 </h4>
                 <p className="text-[11px] text-stone-300 font-light line-clamp-1 mt-0.5">
-                  {DEFAULT_GALLERY[activeImageIndex].description}
+                  {currentImage.description}
                 </p>
               </div>
             </div>
 
             {/* Thumbnails Row */}
             <div className="grid grid-cols-5 gap-2.5 pt-1">
-              {DEFAULT_GALLERY.map((img, idx) => {
+              {galleryItems.map((img, idx) => {
                 const isActiveThumb = activeImageIndex === idx;
                 return (
                   <button
-                    key={img.id}
+                    key={img.id || idx}
+                    type="button"
                     onClick={() => setActiveImageIndex(idx)}
                     className={`relative rounded-lg overflow-hidden h-16 border-2 transition cursor-pointer ${
                       isActiveThumb
@@ -453,6 +801,18 @@ export default function AdminRoomDetailPage() {
               })}
             </div>
           </div>
+
+          {/* Mô tả & Tổng quan không gian */}
+          {description && (
+            <div className="bg-white rounded-2xl border border-stone-200/90 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] space-y-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a67c2e] block">
+                Tổng Quan & Định Vị Không Gian
+              </span>
+              <p className="text-xs text-stone-700 font-light leading-relaxed whitespace-pre-line">
+                {description}
+              </p>
+            </div>
+          )}
 
           {/* Bảng thông số kỹ thuật chi tiết */}
           <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] space-y-4">
@@ -524,83 +884,136 @@ export default function AdminRoomDetailPage() {
             </div>
           </div>
 
-          {/* Tiện nghi & Hạ tầng công nghệ có sẵn */}
+          {/* Tiện nghi & Hạ tầng công nghệ có sẵn - Dữ liệu thực tế từ DB */}
           <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] space-y-4">
-            <h3 className="text-sm font-serif font-normal text-stone-900 border-b border-stone-100 pb-3 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Sparkles size={15} className="text-[#a67c2e]" />
-                <span>Hạ Tầng Công Nghệ & Tiện Nghi Được Trang Bị</span>
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a67c2e] block">
+                  Tiện Nghi & Đặc Tính Kỹ Thuật
+                </span>
+                <h3 className="text-sm font-serif font-normal text-stone-900 flex items-center gap-2 mt-0.5">
+                  <Sparkles size={15} className="text-[#a67c2e]" />
+                  <span>Trang Thiết Bị & Đặc Điểm Riêng Biệt Của Phòng</span>
+                </h3>
+              </div>
+              <span className="text-[11px] text-stone-500 font-light">
+                {Object.values(selectedAmenities).filter((v) => v.selected).length} tiện nghi đang chọn
               </span>
-              <span className="text-[10px] text-stone-400 font-light">
-                Bấm vào để bật/tắt trang thiết bị
-              </span>
-            </h3>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div
-                onClick={() => setHasProjector(!hasProjector)}
-                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                  hasProjector
-                    ? 'border-[#c59b48]/60 bg-[#c59b48]/5 text-stone-900'
-                    : 'border-stone-200 bg-stone-50 text-stone-400'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Monitor size={16} className={hasProjector ? 'text-[#a67c2e]' : 'text-stone-400'} />
-                  <div>
-                    <span className="font-semibold block">Màn Chiếu LED 4K / Máy Chiếu</span>
-                    <span className="text-[10px] text-stone-500">Màn hình 98 inch Ultra HD</span>
-                  </div>
-                </div>
-                <span className={`w-3.5 h-3.5 rounded-full ${hasProjector ? 'bg-[#c59b48]' : 'bg-stone-300'}`} />
-              </div>
+            <p className="text-xs text-stone-500 font-light leading-relaxed">
+              Tích chọn tiện nghi phòng sở hữu và nhập ghi chú đặc thù (ví dụ: hội trường lớn có màn hình LED lớn, phòng họp có bàn ghế TV, phòng trống cho hoạt động...).
+            </p>
 
-              <div
-                onClick={() => setHasWhiteboard(!hasWhiteboard)}
-                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                  hasWhiteboard
-                    ? 'border-[#c59b48]/60 bg-[#c59b48]/5 text-stone-900'
-                    : 'border-stone-200 bg-stone-50 text-stone-400'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Presentation size={16} className={hasWhiteboard ? 'text-[#a67c2e]' : 'text-stone-400'} />
-                  <div>
-                    <span className="font-semibold block">Bảng Kính Thảo Luận Từ Tính</span>
-                    <span className="text-[10px] text-stone-500">Kèm bộ bút dạ cao cấp</span>
-                  </div>
-                </div>
-                <span className={`w-3.5 h-3.5 rounded-full ${hasWhiteboard ? 'bg-[#c59b48]' : 'bg-stone-300'}`} />
-              </div>
+            <div className="grid grid-cols-1 gap-3.5 pt-1">
+              {availableAmenities.map((amenity) => {
+                const isSelected = selectedAmenities[amenity.id]?.selected ?? false;
+                const note = selectedAmenities[amenity.id]?.customNote ?? '';
 
-              <div
-                onClick={() => setHasVideoConference(!hasVideoConference)}
-                className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                  hasVideoConference
-                    ? 'border-[#c59b48]/60 bg-[#c59b48]/5 text-stone-900'
-                    : 'border-stone-200 bg-stone-50 text-stone-400'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Video size={16} className={hasVideoConference ? 'text-[#a67c2e]' : 'text-stone-400'} />
-                  <div>
-                    <span className="font-semibold block">Hội Nghị Truyền Hình (Zoom/Teams)</span>
-                    <span className="text-[10px] text-stone-500">Camera PTZ & Micro lọc ồn AI</span>
-                  </div>
-                </div>
-                <span className={`w-3.5 h-3.5 rounded-full ${hasVideoConference ? 'bg-[#c59b48]' : 'bg-stone-300'}`} />
-              </div>
+                return (
+                  <div
+                    key={amenity.id}
+                    className={`p-4 rounded-xl border transition ${
+                      isSelected
+                        ? 'border-[#c59b48]/60 bg-[#c59b48]/5 shadow-2xs'
+                        : 'border-stone-200/80 bg-stone-50/50 hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div
+                        className="flex items-center gap-3 cursor-pointer flex-1"
+                        onClick={() => {
+                          setSelectedAmenities((prev) => ({
+                            ...prev,
+                            [amenity.id]: {
+                              selected: !isSelected,
+                              customNote: prev[amenity.id]?.customNote || ''
+                            }
+                          }));
+                          // Đồng bộ cờ legacy nếu cần
+                          if (amenity.name.includes('Smart TV') || amenity.name.includes('LED')) {
+                            setHasProjector(!isSelected);
+                          }
+                          if (amenity.name.includes('Bảng Kính')) {
+                            setHasWhiteboard(!isSelected);
+                          }
+                          if (amenity.name.includes('Zoom')) {
+                            setHasVideoConference(!isSelected);
+                          }
+                        }}
+                      >
+                        <div className={`p-2.5 rounded-lg shrink-0 ${isSelected ? 'bg-[#c59b48]/20' : 'bg-stone-100'}`}>
+                          {renderAmenityIcon(amenity.icon)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-stone-900">{amenity.name}</span>
+                            <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-stone-200/70 text-stone-600 font-medium">
+                              {amenity.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500 font-light mt-0.5">
+                            {amenity.description}
+                          </p>
+                        </div>
+                      </div>
 
-              <div className="p-3.5 rounded-xl border border-stone-200 bg-stone-50 text-stone-800 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Wifi size={16} className="text-[#a67c2e]" />
-                  <div>
-                    <span className="font-semibold block">Đường Truyền Wifi 6 Độc Lập</span>
-                    <span className="text-[10px] text-stone-500">1Gbps băng thông riêng</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAmenities((prev) => ({
+                            ...prev,
+                            [amenity.id]: {
+                              selected: !isSelected,
+                              customNote: prev[amenity.id]?.customNote || ''
+                            }
+                          }));
+                          if (amenity.name.includes('Smart TV') || amenity.name.includes('LED')) {
+                            setHasProjector(!isSelected);
+                          }
+                          if (amenity.name.includes('Bảng Kính')) {
+                            setHasWhiteboard(!isSelected);
+                          }
+                          if (amenity.name.includes('Zoom')) {
+                            setHasVideoConference(!isSelected);
+                          }
+                        }}
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition cursor-pointer shrink-0 mt-1 ${
+                          isSelected
+                            ? 'bg-[#0b1220] border-[#0b1220] text-[#e6c87e]'
+                            : 'border-stone-300 bg-white hover:border-stone-400'
+                        }`}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                      </button>
+                    </div>
+
+                    {isSelected && (
+                      <div className="mt-3 pt-3 border-t border-[#c59b48]/20">
+                        <label className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wider mb-1">
+                          Đặc tả / Ghi chú chi tiết cho phòng này:
+                        </label>
+                        <input
+                          type="text"
+                          value={note}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedAmenities((prev) => ({
+                              ...prev,
+                              [amenity.id]: {
+                                selected: true,
+                                customNote: val
+                              }
+                            }));
+                          }}
+                          placeholder={`Ví dụ: ${amenity.name} kích thước lớn, chuẩn phòng họp...`}
+                          className="w-full bg-white border border-[#c59b48]/30 rounded-lg px-3 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#c59b48]"
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <span className="w-3.5 h-3.5 rounded-full bg-emerald-500" />
-              </div>
+                );
+              })}
             </div>
           </div>
 
@@ -707,6 +1120,19 @@ export default function AdminRoomDetailPage() {
                     <option value="Creative Space">Creative Space (Thảo luận đa phương)</option>
                     <option value="Summit Hall">Summit Hall (Hội nghị quy mô lớn)</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-stone-700 font-semibold mb-1">
+                    Mô tả không gian & đặc trưng
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Mô tả phong cách kiến trúc, không gian và các đặc điểm nổi bật của phòng..."
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-[#c59b48] text-stone-800 transition resize-none"
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -854,16 +1280,16 @@ export default function AdminRoomDetailPage() {
           </button>
           <div className="max-w-5xl w-full text-center space-y-3">
             <img
-              src={DEFAULT_GALLERY[activeImageIndex].url}
+              src={currentImage.url}
               alt="Fullscreen Preview"
               className="max-h-[80vh] w-auto mx-auto rounded-2xl shadow-2xl object-contain"
             />
             <div className="text-stone-300">
               <h3 className="text-lg font-serif text-white">
-                {DEFAULT_GALLERY[activeImageIndex].title}
+                {currentImage.title}
               </h3>
               <p className="text-xs text-stone-400 font-light max-w-xl mx-auto mt-1">
-                {DEFAULT_GALLERY[activeImageIndex].description}
+                {currentImage.description}
               </p>
             </div>
           </div>

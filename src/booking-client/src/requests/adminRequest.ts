@@ -5,6 +5,7 @@ import type {
   AdminRoomItem,
   RoomManagePayload,
   CorporateUserItem,
+  AmenityItem,
 } from '../types/admin';
 
 export const adminRequest = {
@@ -38,6 +39,10 @@ export const adminRequest = {
   // 3. Quản lý danh mục phòng họp
   getRooms: () =>
     httpClient.get<AdminRoomItem[]>('/Admin/rooms', { authenticated: true }),
+
+  // Lấy danh mục tiện nghi dùng chung
+  getAmenities: () =>
+    httpClient.get<AmenityItem[]>('/Admin/amenities', { authenticated: true }),
 
   // Tạo mới phòng họp
   createRoom: (payload: RoomManagePayload) =>

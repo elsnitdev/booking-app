@@ -1,9 +1,10 @@
 using System.Text;
 using BookingApi.Data;
+using BookingApi.Models.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-
+using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,14 +12,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHostedService<BookingApi.Services.BookingLifecycleWorker>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 // Cấu hình CORS để cho phép Frontend React gọi API
 builder.Services.AddCors(options =>
 {
   options.AddPolicy("AllowAll", policy =>
   {
-    policy.AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+    policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:3000") // Port của Vite React
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // BẮT BUỘC để cho phép nhận/gửi Cookie
   });
 });
 
@@ -53,6 +56,17 @@ builder.Services.AddAuthentication(options =>
     ValidAudience = jwtSettings["Audience"],
     IssuerSigningKey = new SymmetricSecurityKey(key)
   };
+  options.Events = new JwtBearerEvents
+  {
+    OnMessageReceived = context =>
+    {
+      if (context.Request.Cookies.ContainsKey("auth_token"))
+      {
+        context.Token = context.Request.Cookies["auth_token"];
+      }
+      return Task.CompletedTask;
+    }
+  };
 });
 
 var app = builder.Build();
@@ -72,5 +86,8 @@ app.UseAuthentication(); // BẮT BUỘC ĐỨNG TRƯỚC UseAuthorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Nạp dữ liệu mẫu ban đầu cho Amenities và RoomImages
+await BookingApi.Data.DbSeeder.SeedAmenitiesAndImagesAsync(app.Services);
 
 app.Run();

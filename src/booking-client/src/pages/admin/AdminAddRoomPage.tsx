@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -16,10 +16,13 @@ import {
   Wifi,
   Clock,
   Coffee,
-  Check
+  Check,
+  Tv,
+  Mic,
+  Maximize2
 } from 'lucide-react';
 import { adminRequest } from '../../requests/adminRequest';
-import type { RoomManagePayload } from '../../types/admin';
+import type { RoomManagePayload, AmenityItem } from '../../types/admin';
 import { useAdminToast } from '../../context/AdminToastContext';
 
 // Bộ sưu tập ảnh mẫu cao cấp phong cách Atelier Quiet Luxury phục vụ review & chọn nhanh
@@ -73,6 +76,51 @@ export default function AdminAddRoomPage() {
   const [hasWifi, setHasWifi] = useState(true);
   const [hasCoffee, setHasCoffee] = useState(true);
 
+  // Dynamic Amenities từ API
+  const [availableAmenities, setAvailableAmenities] = useState<AmenityItem[]>([]);
+  const [selectedAmenities, setSelectedAmenities] = useState<
+    Record<string, { selected: boolean; customNote: string }>
+  >({});
+
+  const renderAmenityIcon = (iconName: string) => {
+    switch (iconName?.toLowerCase()) {
+      case 'monitor': return <Monitor size={15} className="text-[#a67c2e]" />;
+      case 'tv': return <Tv size={15} className="text-[#a67c2e]" />;
+      case 'maximize-2':
+      case 'maximize': return <Maximize2 size={15} className="text-[#a67c2e]" />;
+      case 'mic': return <Mic size={15} className="text-[#a67c2e]" />;
+      case 'video': return <Video size={15} className="text-[#a67c2e]" />;
+      case 'presentation': return <Presentation size={15} className="text-[#a67c2e]" />;
+      case 'wifi': return <Wifi size={15} className="text-[#a67c2e]" />;
+      case 'coffee': return <Coffee size={15} className="text-[#a67c2e]" />;
+      default: return <Sparkles size={15} className="text-[#a67c2e]" />;
+    }
+  };
+
+  useEffect(() => {
+    const fetchAmenities = async () => {
+      try {
+        const res = await adminRequest.getAmenities();
+        if (res.data && res.data.length > 0) {
+          setAvailableAmenities(res.data);
+          const initialMap: Record<string, { selected: boolean; customNote: string }> = {};
+          res.data.forEach((a) => {
+            const isDefault =
+              a.name.includes('Wifi') ||
+              a.name.includes('Smart TV') ||
+              a.name.includes('cà phê') ||
+              a.name.includes('Zoom');
+            initialMap[a.id] = { selected: isDefault, customNote: '' };
+          });
+          setSelectedAmenities(initialMap);
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    fetchAmenities();
+  }, []);
+
   // Visuals
   const [imageUrl, setImageUrl] = useState(LUXURY_PRESET_IMAGES[0].url);
   const [isActive, setIsActive] = useState(true);
@@ -86,17 +134,41 @@ export default function AdminAddRoomPage() {
     }
 
     setSubmitting(true);
+
+    const amenityPayload = Object.entries(selectedAmenities)
+      .filter(([, val]) => val.selected)
+      .map(([amenityId, val]) => ({
+        amenityId,
+        customNote: val.customNote.trim() || undefined,
+        quantity: 1,
+      }));
+
+    const imagePayload = [
+      { imageUrl, caption: `${name} - Ảnh đại diện chính`, tag: 'Overview', isPrimary: true, displayOrder: 0 },
+      ...LUXURY_PRESET_IMAGES.filter((p) => p.url !== imageUrl).map((p, idx) => ({
+        imageUrl: p.url,
+        caption: `${name} - ${p.title}`,
+        tag: p.tag,
+        isPrimary: false,
+        displayOrder: idx + 1,
+      })),
+    ];
+
     const payload: RoomManagePayload = {
       name: name.trim(),
       roomType,
       capacity: Number(capacity),
       hourlyRate: Number(hourlyRate),
       location: location.trim(),
+      description: description.trim(),
+      coverImageUrl: imageUrl,
       hasProjector,
       hasWhiteboard,
       hasVideoConference,
       cleanupTimeMinutes: Number(cleanupTimeMinutes),
       isActive,
+      images: imagePayload,
+      amenities: amenityPayload,
     };
 
     try {
@@ -382,100 +454,165 @@ export default function AdminAddRoomPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-serif font-normal text-stone-900">
-                    Hạ Tầng Công Nghệ & Tiện Nghi Đi Kèm
+                    Hạ Tầng Công Nghệ & Tiện Nghi Đặc Thù
                   </h2>
                   <p className="text-[11px] text-stone-400 font-light">
-                    Đánh dấu các trang thiết bị có sẵn để hiển thị biểu tượng xác nhận cho khách hàng.
+                    Chọn các tiện ích (màn hình LED lớn, TV hội đàm, sàn trống đa năng...) và bổ sung ghi chú thông số cho từng phòng.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
-                  <input
-                    type="checkbox"
-                    checked={hasProjector}
-                    onChange={(e) => setHasProjector(e.target.checked)}
-                    className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 flex items-center gap-1.5">
-                      <Monitor size={14} className="text-[#a67c2e]" /> Màn Chiếu LED 4K / Máy Chiếu
-                    </span>
-                    <p className="text-[11px] text-stone-400 font-light mt-0.5">
-                      Độ phân giải siêu nét, kết nối HDMI/Type-C/AirPlay.
-                    </p>
-                  </div>
-                </label>
+              {availableAmenities.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                  {availableAmenities.map((am) => {
+                    const isChecked = !!selectedAmenities[am.id]?.selected;
+                    return (
+                      <div
+                        key={am.id}
+                        className={`p-3.5 rounded-xl border transition ${
+                          isChecked
+                            ? 'border-[#c59b48] bg-[#c59b48]/5 shadow-xs'
+                            : 'border-stone-200 bg-stone-50/50 hover:border-stone-300'
+                        }`}
+                      >
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setSelectedAmenities((prev) => ({
+                                ...prev,
+                                [am.id]: {
+                                  selected: checked,
+                                  customNote: prev[am.id]?.customNote || '',
+                                },
+                              }));
+                            }}
+                            className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-stone-800 flex items-center gap-1.5 truncate">
+                              {renderAmenityIcon(am.icon)} {am.name}
+                            </span>
+                            <p className="text-[11px] text-stone-400 font-light mt-0.5 truncate">
+                              {am.description || am.category}
+                            </p>
+                          </div>
+                        </label>
 
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
-                  <input
-                    type="checkbox"
-                    checked={hasWhiteboard}
-                    onChange={(e) => setHasWhiteboard(e.target.checked)}
-                    className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 flex items-center gap-1.5">
-                      <Presentation size={14} className="text-[#a67c2e]" /> Bảng Kính Thảo Luận
-                    </span>
-                    <p className="text-[11px] text-stone-400 font-light mt-0.5">
-                      Bảng kính từ tính kèm bút lông thảo luận cao cấp.
-                    </p>
-                  </div>
-                </label>
+                        {isChecked && (
+                          <div className="mt-2.5 pt-2 border-t border-[#c59b48]/20">
+                            <input
+                              type="text"
+                              placeholder="Ghi chú riêng (VD: Màn LED 300 inch P2, Sàn 100m² không cột, TV 85 inch...)"
+                              value={selectedAmenities[am.id]?.customNote || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedAmenities((prev) => ({
+                                  ...prev,
+                                  [am.id]: {
+                                    ...prev[am.id],
+                                    customNote: val,
+                                  },
+                                }));
+                              }}
+                              className="w-full bg-white border border-[#c59b48]/40 rounded-lg px-2.5 py-1.5 text-[11px] text-stone-800 outline-none focus:border-[#c59b48]"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={hasProjector}
+                      onChange={(e) => setHasProjector(e.target.checked)}
+                      className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Monitor size={14} className="text-[#a67c2e]" /> Màn Chiếu LED 4K / Máy Chiếu
+                      </span>
+                      <p className="text-[11px] text-stone-400 font-light mt-0.5">
+                        Độ phân giải siêu nét, kết nối HDMI/Type-C/AirPlay.
+                      </p>
+                    </div>
+                  </label>
 
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
-                  <input
-                    type="checkbox"
-                    checked={hasVideoConference}
-                    onChange={(e) => setHasVideoConference(e.target.checked)}
-                    className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 flex items-center gap-1.5">
-                      <Video size={14} className="text-[#a67c2e]" /> Zoom / Teams Rooms
-                    </span>
-                    <p className="text-[11px] text-stone-400 font-light mt-0.5">
-                      Camera góc rộng 120 độ lọc ồn AI và micro đa hướng.
-                    </p>
-                  </div>
-                </label>
+                  <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={hasWhiteboard}
+                      onChange={(e) => setHasWhiteboard(e.target.checked)}
+                      className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Presentation size={14} className="text-[#a67c2e]" /> Bảng Kính Thảo Luận
+                      </span>
+                      <p className="text-[11px] text-stone-400 font-light mt-0.5">
+                        Bảng kính từ tính kèm bút lông thảo luận cao cấp.
+                      </p>
+                    </div>
+                  </label>
 
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
-                  <input
-                    type="checkbox"
-                    checked={hasWifi}
-                    onChange={(e) => setHasWifi(e.target.checked)}
-                    className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 flex items-center gap-1.5">
-                      <Wifi size={14} className="text-[#a67c2e]" /> Đường Truyền Wifi 6 Doanh Nghiệp
-                    </span>
-                    <p className="text-[11px] text-stone-400 font-light mt-0.5">
-                      Tốc độ 1Gbps độc lập, bảo mật mã hóa WPA3 Enterprise.
-                    </p>
-                  </div>
-                </label>
+                  <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={hasVideoConference}
+                      onChange={(e) => setHasVideoConference(e.target.checked)}
+                      className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Video size={14} className="text-[#a67c2e]" /> Zoom / Teams Rooms
+                      </span>
+                      <p className="text-[11px] text-stone-400 font-light mt-0.5">
+                        Camera góc rộng 120 độ lọc ồn AI và micro đa hướng.
+                      </p>
+                    </div>
+                  </label>
 
-                <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={hasCoffee}
-                    onChange={(e) => setHasCoffee(e.target.checked)}
-                    className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-semibold text-stone-800 flex items-center gap-1.5">
-                      <Coffee size={14} className="text-[#a67c2e]" /> Dịch Vụ Cà Phê Espresso & Teabreak
-                    </span>
-                    <p className="text-[11px] text-stone-400 font-light mt-0.5">
-                      Máy pha cà phê hạt tự động và quầy trà thảo mộc phục vụ miễn phí trong phòng.
-                    </p>
-                  </div>
-                </label>
-              </div>
+                  <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition">
+                    <input
+                      type="checkbox"
+                      checked={hasWifi}
+                      onChange={(e) => setHasWifi(e.target.checked)}
+                      className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Wifi size={14} className="text-[#a67c2e]" /> Đường Truyền Wifi 6 Doanh Nghiệp
+                      </span>
+                      <p className="text-[11px] text-stone-400 font-light mt-0.5">
+                        Tốc độ 1Gbps độc lập, bảo mật mã hóa WPA3 Enterprise.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-[#c59b48]/60 bg-stone-50/50 cursor-pointer transition sm:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={hasCoffee}
+                      onChange={(e) => setHasCoffee(e.target.checked)}
+                      className="accent-[#c59b48] w-4 h-4 mt-0.5 rounded cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-semibold text-stone-800 flex items-center gap-1.5">
+                        <Coffee size={14} className="text-[#a67c2e]" /> Dịch Vụ Cà Phê Espresso & Teabreak
+                      </span>
+                      <p className="text-[11px] text-stone-400 font-light mt-0.5">
+                        Máy pha cà phê hạt tự động và quầy trà thảo mộc phục vụ miễn phí trong phòng.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
             </div>
 
             {/* Card 4: Hình ảnh không gian */}

@@ -15,6 +15,8 @@ namespace BookingApi.Models.Entities
         public string RoomType { get; set; } = "Meeting Room"; // Meeting Room, Workshop, Boardroom
         public decimal HourlyRate { get; set; } = 0;
         public string Location { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string? CoverImageUrl { get; set; }
         
         // Tiện ích
         public bool HasProjector { get; set; } = true;
@@ -30,5 +32,7 @@ namespace BookingApi.Models.Entities
 
         // Navigation property
         public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+        public ICollection<RoomImage> Images { get; set; } = new List<RoomImage>();
+        public ICollection<RoomAmenity> RoomAmenities { get; set; } = new List<RoomAmenity>();
     }
 }

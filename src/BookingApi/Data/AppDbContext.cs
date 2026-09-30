@@ -12,6 +12,9 @@ namespace BookingApi.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Room> Rooms { get; set; }
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<Amenity> Amenities { get; set; }
+        public DbSet<RoomAmenity> RoomAmenities { get; set; }
+        public DbSet<RoomImage> RoomImages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,8 +36,52 @@ namespace BookingApi.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.HourlyRate).HasPrecision(18, 2);
+                entity.Property(e => e.CoverImageUrl).HasMaxLength(500);
+                entity.Property(e => e.Description).HasMaxLength(1000);
                 // Cấu hình RowVersion cho Optimistic Concurrency (chống nhiều người đặt cùng lúc)
                 entity.Property(e => e.RowVersion).IsRowVersion();
+            });
+
+            // Cấu hình bảng Amenity
+            modelBuilder.Entity<Amenity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.Name).IsUnique();
+                entity.Property(e => e.Category).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Icon).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(255);
+            });
+
+            // Cấu hình bảng quan hệ RoomAmenity (N-N giữa Room và Amenity)
+            modelBuilder.Entity<RoomAmenity>(entity =>
+            {
+                entity.HasKey(ra => new { ra.RoomId, ra.AmenityId });
+                entity.Property(ra => ra.CustomNote).HasMaxLength(250);
+
+                entity.HasOne(ra => ra.Room)
+                      .WithMany(r => r.RoomAmenities)
+                      .HasForeignKey(ra => ra.RoomId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(ra => ra.Amenity)
+                      .WithMany(a => a.RoomAmenities)
+                      .HasForeignKey(ra => ra.AmenityId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Cấu hình bảng RoomImage (1-N với Room)
+            modelBuilder.Entity<RoomImage>(entity =>
+            {
+                entity.HasKey(ri => ri.Id);
+                entity.Property(ri => ri.ImageUrl).IsRequired().HasMaxLength(500);
+                entity.Property(ri => ri.Caption).HasMaxLength(150);
+                entity.Property(ri => ri.Tag).HasMaxLength(50);
+
+                entity.HasOne(ri => ri.Room)
+                      .WithMany(r => r.Images)
+                      .HasForeignKey(ri => ri.RoomId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Cấu hình bảng Booking

@@ -18,6 +18,10 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRight,
+  Tv,
+  Mic,
+  Maximize2,
+  Sparkles,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Room } from "../types/room";
@@ -451,6 +455,31 @@ export default function RoomDetailPage() {
 
   const seed = room.id.slice(0, 4);
 
+  const renderAmenityIcon = (iconName?: string) => {
+    switch (iconName?.toLowerCase()) {
+      case 'monitor': return <Monitor size={16} />;
+      case 'tv': return <Tv size={16} />;
+      case 'maximize-2':
+      case 'maximize': return <Maximize2 size={16} />;
+      case 'mic': return <Mic size={16} />;
+      case 'video': return <Video size={16} />;
+      case 'presentation': return <Presentation size={16} />;
+      case 'wifi': return <Wifi size={16} />;
+      case 'coffee': return <Coffee size={16} />;
+      default: return <Sparkles size={16} />;
+    }
+  };
+
+  const galleryImages = room?.images && room.images.length > 0
+    ? room.images.map(img => img.imageUrl)
+    : [
+        `https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop&sig=${seed}1`,
+        `https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=400&auto=format&fit=crop&sig=${seed}2`,
+        `https://images.unsplash.com/photo-1572025442646-866d16c84a54?q=80&w=400&auto=format&fit=crop&sig=${seed}3`,
+        `https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=400&auto=format&fit=crop&sig=${seed}4`,
+        `https://images.unsplash.com/photo-1505409859467-3a796fd5798e?q=80&w=400&auto=format&fit=crop&sig=${seed}5`
+      ];
+
   return (
     <div className="min-h-screen bg-[#faf8f5] pb-20 text-stone-800">
       <Navbar />
@@ -504,157 +533,183 @@ export default function RoomDetailPage() {
 
         {/* Thư viện ảnh bố cục tạp chí */}
         <div className="grid grid-cols-4 grid-rows-2 gap-3 h-[380px] sm:h-[440px] mb-10 rounded-2xl overflow-hidden border border-stone-200/80 shadow-[0_4px_24px_rgba(0,0,0,0.04)]">
-          <div className="col-span-2 row-span-2 overflow-hidden bg-stone-100">
-            <img
-              src={`https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop&sig=${seed}1`}
-              alt="Main View"
-              className="w-full h-full object-cover hover:scale-102 transition-transform duration-700 cursor-pointer"
-            />
-          </div>
-          <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
-            <img
-              src={`https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=400&auto=format&fit=crop&sig=${seed}2`}
-              alt="Detail 1"
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
-            />
-          </div>
-          <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
-            <img
-              src={`https://images.unsplash.com/photo-1572025442646-866d16c84a54?q=80&w=400&auto=format&fit=crop&sig=${seed}3`}
-              alt="Detail 2"
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
-            />
-          </div>
-          <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
-            <img
-              src={`https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=400&auto=format&fit=crop&sig=${seed}4`}
-              alt="Detail 3"
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
-            />
-          </div>
-          <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
-            <img
-              src={`https://images.unsplash.com/photo-1505409859467-3a796fd5798e?q=80&w=400&auto=format&fit=crop&sig=${seed}5`}
-              alt="Detail 4"
-              className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
-            />
-          </div>
-        </div>
-
-        {/* Nội dung chính chia 2 cột */}
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Cột trái: Thông tin phòng & Tiện nghi */}
-          <div className="lg:w-2/3">
-            <div className="bg-white p-7 rounded-2xl border border-stone-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] mb-8">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a67c2e] block mb-2">
-                Không Gian Làm Việc
-              </span>
-              <h2 className="text-xl font-serif font-normal text-stone-900 mb-4">
-                Thiết Kế Đẳng Cấp Cho Các Cuộc Họp Trọng Yếu
-              </h2>
-              <p className="text-stone-600 text-sm leading-relaxed mb-6 font-light text-justify">
-                Được bài trí với tiêu chuẩn cách âm cao cấp, đón trọn ánh sáng
-                tự nhiên cùng hạ tầng công nghệ hội thảo trực tuyến đồng bộ.
-                Không gian lý tưởng cho các cuộc họp hội đồng quản trị, ký kết
-                hợp tác chiến lược hoặc các buổi workshop chuyên sâu của đội
-                ngũ.
-              </p>
-
-              <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400 mb-4">
-                Hạ Tầng & Tiện Ích Tích Hợp
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                  <div className="w-8 h-8 rounded-lg bg-[#c59b48]/10 text-[#c59b48] flex items-center justify-center shrink-0">
-                    <Users size={16} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                      Quy mô
-                    </span>
-                    <span className="text-xs font-semibold text-stone-800">
-                      Sức chứa {room.capacity} thành viên
-                    </span>
-                  </div>
+                <div className="col-span-2 row-span-2 overflow-hidden bg-stone-100">
+                  <img
+                    src={galleryImages[0]}
+                    alt="Main View"
+                    className="w-full h-full object-cover hover:scale-102 transition-transform duration-700 cursor-pointer"
+                  />
                 </div>
-
-                {room.hasProjector && (
-                  <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                    <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
-                      <Monitor size={16} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                        Trình chiếu
-                      </span>
-                      <span className="text-xs font-semibold text-stone-800">
-                        Màn hình LED 4K / Máy chiếu
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {room.hasWhiteboard && (
-                  <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                    <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
-                      <Presentation size={16} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                        Thảo luận
-                      </span>
-                      <span className="text-xs font-semibold text-stone-800">
-                        Bảng kính & Bút dạ viết
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {room.hasVideoConference && (
-                  <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                    <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
-                      <Video size={16} />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                        Trực tuyến
-                      </span>
-                      <span className="text-xs font-semibold text-stone-800">
-                        Hội nghị truyền hình (Zoom/Teams)
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                  <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
-                    <Wifi size={16} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                      Kết nối
-                    </span>
-                    <span className="text-xs font-semibold text-stone-800">
-                      Wifi chuyên dụng 1Gbps
-                    </span>
-                  </div>
+                <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
+                  <img
+                    src={galleryImages[1] || galleryImages[0]}
+                    alt="Detail 1"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
+                  />
                 </div>
-
-                <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
-                  <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
-                    <Coffee size={16} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
-                      Dịch vụ
-                    </span>
-                    <span className="text-xs font-semibold text-stone-800">
-                      Trà & Cà phê hạt chọn lọc
-                    </span>
-                  </div>
+                <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
+                  <img
+                    src={galleryImages[2] || galleryImages[0]}
+                    alt="Detail 2"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
+                  />
+                </div>
+                <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
+                  <img
+                    src={galleryImages[3] || galleryImages[0]}
+                    alt="Detail 3"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
+                  />
+                </div>
+                <div className="col-span-1 row-span-1 overflow-hidden bg-stone-100">
+                  <img
+                    src={galleryImages[4] || galleryImages[0]}
+                    alt="Detail 4"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-700 cursor-pointer"
+                  />
                 </div>
               </div>
-            </div>
+
+              {/* Nội dung chính chia 2 cột */}
+              <div className="flex flex-col lg:flex-row gap-8">
+                {/* Cột trái: Thông tin phòng & Tiện nghi */}
+                <div className="lg:w-2/3">
+                  <div className="bg-white p-7 rounded-2xl border border-stone-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.02)] mb-8">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#a67c2e] block mb-2">
+                      Không Gian Làm Việc
+                    </span>
+                    <h2 className="text-xl font-serif font-normal text-stone-900 mb-4">
+                      Thiết Kế Đẳng Cấp Cho Các Cuộc Họp Trọng Yếu
+                    </h2>
+                    <p className="text-stone-600 text-sm leading-relaxed mb-6 font-light text-justify">
+                      {room.description ||
+                        "Được bài trí với tiêu chuẩn cách âm cao cấp, đón trọn ánh sáng tự nhiên cùng hạ tầng công nghệ hội thảo trực tuyến đồng bộ. Không gian lý tưởng cho các cuộc họp hội đồng quản trị, ký kết hợp tác chiến lược hoặc các buổi workshop chuyên sâu của đội ngũ."}
+                    </p>
+
+                    <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400 mb-4">
+                      Hạ Tầng & Tiện Ích Tích Hợp
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                        <div className="w-8 h-8 rounded-lg bg-[#c59b48]/10 text-[#c59b48] flex items-center justify-center shrink-0">
+                          <Users size={16} />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                            Quy mô
+                          </span>
+                          <span className="text-xs font-semibold text-stone-800">
+                            Sức chứa {room.capacity} thành viên
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tiện nghi động từ bảng Amenities & RoomAmenities */}
+                      {room.amenities && room.amenities.length > 0 ? (
+                        room.amenities.map((am) => (
+                          <div
+                            key={am.id}
+                            className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60 hover:border-[#c59b48]/50 transition"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                              {renderAmenityIcon(am.icon)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold truncate">
+                                {am.category}
+                              </span>
+                              <span className="text-xs font-semibold text-stone-800 block truncate">
+                                {am.name}
+                              </span>
+                              {am.customNote && (
+                                <span className="text-[11px] text-[#a67c2e] font-medium block truncate mt-0.5">
+                                  {am.customNote}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          {room.hasProjector && (
+                            <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                              <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                                <Monitor size={16} />
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                                  Trình chiếu
+                                </span>
+                                <span className="text-xs font-semibold text-stone-800">
+                                  Màn hình LED 4K / Máy chiếu
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {room.hasWhiteboard && (
+                            <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                              <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                                <Presentation size={16} />
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                                  Thảo luận
+                                </span>
+                                <span className="text-xs font-semibold text-stone-800">
+                                  Bảng kính & Bút dạ viết
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {room.hasVideoConference && (
+                            <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                              <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                                <Video size={16} />
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                                  Trực tuyến
+                                </span>
+                                <span className="text-xs font-semibold text-stone-800">
+                                  Hội nghị truyền hình (Zoom/Teams)
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                            <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                              <Wifi size={16} />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                                Kết nối
+                              </span>
+                              <span className="text-xs font-semibold text-stone-800">
+                                Wifi chuyên dụng 1Gbps
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-stone-700 bg-stone-50/80 p-3 rounded-xl border border-stone-200/60">
+                            <div className="w-8 h-8 rounded-lg bg-stone-200/60 text-stone-700 flex items-center justify-center shrink-0">
+                              <Coffee size={16} />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-stone-400 uppercase tracking-wider block font-semibold">
+                                Dịch vụ
+                              </span>
+                              <span className="text-xs font-semibold text-stone-800">
+                                Trà & Cà phê hạt chọn lọc
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
             {/* Card: Lịch Hoạt Động & Chuỗi Khung Giờ Họp (Atelier Quiet Luxury) */}
             <div className="bg-[#faf8f5] rounded-3xl border border-stone-200/80 p-6 md:p-8 shadow-[0_8px_32px_rgba(15,23,42,0.03)]">

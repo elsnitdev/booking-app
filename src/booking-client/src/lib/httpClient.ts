@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '../config/api';
-import type { ApiResponse } from '../types/api';
+import { API_BASE_URL } from "../config/api";
+import type { ApiResponse } from "../types/api";
 
 export class ApiError extends Error {
   status: number;
@@ -7,9 +7,14 @@ export class ApiError extends Error {
   errors?: string[] | null;
   response?: { status: number; data?: unknown };
 
-  constructor(message: string, status: number, data?: unknown, errors?: string[] | null) {
+  constructor(
+    message: string,
+    status: number,
+    data?: unknown,
+    errors?: string[] | null,
+  ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.data = data;
     this.errors = errors;
@@ -17,7 +22,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface RequestOptions extends Omit<RequestInit, 'body'> {
+export interface RequestOptions extends Omit<RequestInit, "body"> {
   authenticated?: boolean;
   body?: unknown;
 }
@@ -29,17 +34,20 @@ class HttpClient {
     this.baseURL = baseURL;
   }
 
-  private getHeaders(authenticated: boolean = false, customHeaders?: HeadersInit): Headers {
+  private getHeaders(
+    authenticated: boolean = false,
+    customHeaders?: HeadersInit,
+  ): Headers {
     const headers = new Headers(customHeaders);
 
-    if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
     }
 
     if (authenticated) {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
+        headers.set("Authorization", `Bearer ${token}`);
       }
     }
 
@@ -54,49 +62,66 @@ class HttpClient {
     } catch {
       result = {
         success: response.ok,
-        message: response.statusText || 'Không thể đọc phản hồi từ máy chủ.',
+        message: response.statusText || "Không thể đọc phản hồi từ máy chủ.",
       };
     }
 
     if (!response.ok || result.success === false) {
-      const message = result.message || `Yêu cầu thất bại với mã lỗi ${response.status}`;
+      const message =
+        result.message || `Yêu cầu thất bại với mã lỗi ${response.status}`;
       throw new ApiError(message, response.status, result.data, result.errors);
     }
 
     return result;
   }
 
-  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
+  async request<T>(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<ApiResponse<T>> {
     const { authenticated = false, body, headers, ...restOptions } = options;
-    const url = endpoint.startsWith('http') ? endpoint : `${this.baseURL}${endpoint}`;
+    const url = endpoint.startsWith("http")
+      ? endpoint
+      : `${this.baseURL}${endpoint}`;
 
     const config: RequestInit = {
       ...restOptions,
+      credentials: "include", // <--- BẮT BUỘC: Để trình duyệt tự gửi và nhận Cookie từ API
       headers: this.getHeaders(authenticated, headers),
     };
 
     if (body !== undefined) {
-      config.body = typeof body === 'string' ? body : JSON.stringify(body);
+      config.body = typeof body === "string" ? body : JSON.stringify(body);
     }
 
     const response = await fetch(url, config);
     return this.handleResponse<T>(response);
   }
-
-  get<T>(endpoint: string, options: Omit<RequestOptions, 'method' | 'body'> = {}) {
-    return this.request<T>(endpoint, { ...options, method: 'GET' });
+  get<T>(
+    endpoint: string,
+    options: Omit<RequestOptions, "method" | "body"> = {},
+  ) {
+    return this.request<T>(endpoint, { ...options, method: "GET" });
   }
 
-  post<T>(endpoint: string, body?: unknown, options: Omit<RequestOptions, 'method' | 'body'> = {}) {
-    return this.request<T>(endpoint, { ...options, method: 'POST', body });
+  post<T>(
+    endpoint: string,
+    body?: unknown,
+    options: Omit<RequestOptions, "method" | "body"> = {},
+  ) {
+    return this.request<T>(endpoint, { ...options, method: "POST", body });
   }
 
-  put<T>(endpoint: string, body?: unknown, options: Omit<RequestOptions, 'method' | 'body'> = {}) {
-    return this.request<T>(endpoint, { ...options, method: 'PUT', body });
+  put<T>(
+    endpoint: string,
+    body?: unknown,
+    options: Omit<RequestOptions, "method" | "body"> = {},
+  ) {
+    return this.request<T>(endpoint, { ...options, method: "PUT", body });
   }
 
-  delete<T>(endpoint: string, options: Omit<RequestOptions, 'method'> = {}) {
-    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+  delete<T>(endpoint: string, options: Omit<RequestOptions, "method"> = {}) {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 }
 

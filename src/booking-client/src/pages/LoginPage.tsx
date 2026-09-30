@@ -23,13 +23,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setErrorMsg("");
     try {
-      const result = await authRequest.login(data);
-
-      // Lưu JWT token vào localStorage
-      if (result.data) {
-        localStorage.setItem("token", result.data);
-      }
-
+      await authRequest.login(data);
       toast.success("Đăng nhập tài khoản thành công!");
       navigate("/");
     } catch (err) {
@@ -120,7 +114,7 @@ export default function LoginPage() {
               type="submit"
               className="bg-[#0b1220] hover:bg-[#141f36] text-[#e6c87e] hover:text-white py-3 rounded-xl font-medium text-xs tracking-wide mt-2 transition duration-200 flex justify-center items-center gap-2 shadow-sm cursor-pointer active:scale-[0.99]"
             >
-              <LogIn size={15} /> 
+              <LogIn size={15} />
               <span>Đăng Nhập</span>
             </button>
           </form>

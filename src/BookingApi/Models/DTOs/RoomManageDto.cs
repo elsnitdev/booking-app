@@ -1,7 +1,16 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookingApi.Models.DTOs
 {
+    public class RoomAmenityInputDto
+    {
+        public Guid AmenityId { get; set; }
+        public string? CustomNote { get; set; }
+        public int Quantity { get; set; } = 1;
+    }
+
     public class RoomManageDto
     {
         [Required(ErrorMessage = "Tên phòng không được để trống")]
@@ -17,6 +26,10 @@ namespace BookingApi.Models.DTOs
 
         public string Location { get; set; } = string.Empty;
 
+        public string? Description { get; set; }
+
+        public string? CoverImageUrl { get; set; }
+
         public bool HasProjector { get; set; } = true;
 
         public bool HasWhiteboard { get; set; } = true;
@@ -26,5 +39,9 @@ namespace BookingApi.Models.DTOs
         public int CleanupTimeMinutes { get; set; } = 15;
 
         public bool IsActive { get; set; } = true;
+
+        public List<RoomImageDto>? Images { get; set; }
+
+        public List<RoomAmenityInputDto>? Amenities { get; set; }
     }
 }
