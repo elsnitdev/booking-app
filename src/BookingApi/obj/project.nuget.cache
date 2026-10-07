@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "Xd9nrmMUl9Q=",
+  "dgSpecHash": "/RPEXvIKiMw=",
   "success": true,
-  "projectFilePath": "D:\\Booking-app\\src\\bookingApi\\BookingApi.csproj",
+  "projectFilePath": "D:\\Booking-app\\src\\BookingApi\\BookingApi.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Windows\\.nuget\\packages\\azure.core\\1.50.0\\azure.core.1.50.0.nupkg.sha512",
     "C:\\Users\\Windows\\.nuget\\packages\\azure.identity\\1.17.1\\azure.identity.1.17.1.nupkg.sha512",

@@ -347,17 +347,6 @@ export default function RoomDetailPage() {
   // 2. Xử lý gửi form đặt phòng
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBookingMessage("");
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.warning(
-        "Vui lòng đăng nhập tài khoản doanh nghiệp trước khi đặt phòng!",
-      );
-      navigate("/login");
-      return;
-    }
-
     if (!title || !date || !startTime || !endTime) {
       toast.warning("Vui lòng nhập đầy đủ thông tin cuộc họp!");
       return;
@@ -391,6 +380,14 @@ export default function RoomDetailPage() {
       toast.success("Chúc mừng! Cuộc họp của bạn đã được đặt thành công.");
       navigate("/my-bookings");
     } catch (err: any) {
+      if (err instanceof ApiError && err.status === 401) {
+        toast.warning(
+          "Vui lòng đăng nhập tài khoản doanh nghiệp trước khi đặt phòng!",
+        );
+        navigate("/login");
+        return;
+      }
+
       // Bắt lỗi 409 Conflict (đụng độ đồng thời)
       if (err?.response?.status === 409 || err?.status === 409) {
         // 1. Tự động làm mới lịch trống tức thì

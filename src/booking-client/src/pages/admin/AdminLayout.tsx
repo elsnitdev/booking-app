@@ -13,13 +13,12 @@ import {
   LogIn
 } from 'lucide-react';
 import { AdminToastContext, type ToastOptions } from '../../context/AdminToastContext';
+import { authRequest } from '../../requests/authRequest';
 
 export default function AdminLayout() {
   const [toast, setToast] = useState<ToastOptions | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Kiểm tra token xác thực
-  const hasToken = typeof window !== 'undefined' && !!localStorage.getItem('token');
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (timerRef.current) {
@@ -33,6 +32,15 @@ export default function AdminLayout() {
   }, []);
 
   useEffect(() => {
+    authRequest
+      .getProfile()
+      .then((res) => {
+        setIsAdmin(res.data?.role === 'Admin');
+      })
+      .catch(() => {
+        setIsAdmin(false);
+      });
+
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -47,14 +55,14 @@ export default function AdminLayout() {
       <div className="min-h-screen bg-[#faf8f5] text-stone-800 pb-20">
         <Navbar />
 
-        {/* Cảnh báo chưa xác thực nếu chưa có token */}
-        {!hasToken && (
+        {/* Cảnh báo nếu chưa xác thực hoặc không có quyền Admin */}
+        {isAdmin === false && (
           <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-xs text-amber-900">
             <div className="container mx-auto max-w-6xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <AlertCircle size={15} className="text-amber-600 shrink-0" />
                 <span>
-                  Bạn chưa đăng nhập. Vui lòng đăng nhập tài khoản quản trị để truy cập và quản lý dữ liệu hệ thống.
+                  Bạn chưa đăng nhập hoặc tài khoản không có quyền Quản trị viên (Admin). Vui lòng đăng nhập tài khoản quản trị để truy cập.
                 </span>
               </div>
               <Link

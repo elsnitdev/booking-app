@@ -35,12 +35,6 @@ export default function MyBookingsPage() {
 
   // 1. Tải thông tin người dùng và danh sách phòng đã đặt
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -60,7 +54,6 @@ export default function MyBookingsPage() {
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
-          localStorage.removeItem('token');
           navigate('/login');
           return;
         }
@@ -81,9 +74,6 @@ export default function MyBookingsPage() {
   const handleCancelBooking = async (bookingId: string) => {
     const confirmCancel = window.confirm('Bạn có chắc chắn muốn hủy lịch đặt phòng họp này không?');
     if (!confirmCancel) return;
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
 
     try {
       setCancellingId(bookingId);

@@ -1,0 +1,14 @@
+---
+description: Quy tắc cộng tác và kiến trúc cho Booking App
+alwaysApply: true
+---
+
+# Chỉ dẫn cho Cursor
+
+`AGENTS.md` ở thư mục gốc là nguồn quy tắc chính. Hãy đọc và tuân theo file đó trước khi hướng dẫn, review hoặc thay đổi code.
+
+- Mặc định hướng dẫn để người dùng tự code; chỉ sửa file khi người dùng yêu cầu triển khai rõ ràng.
+- Không tự ý đổi public API, database schema, kiến trúc hoặc thêm framework ngoài phạm vi.
+- Không sửa file sinh tự động trong `bin/`, `obj/`, `node_modules/`, migration đã sinh hoặc model snapshot.
+- Đọc `docs/ai-workflow.md` cho nhiệm vụ nhiều bước, sửa bug, thêm tính năng, thay đổi API/database hoặc review code.
+- Nếu adapter này mâu thuẫn với `AGENTS.md`, ưu tiên `AGENTS.md` và báo cho người dùng.

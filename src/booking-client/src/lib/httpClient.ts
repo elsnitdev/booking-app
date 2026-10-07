@@ -35,20 +35,13 @@ class HttpClient {
   }
 
   private getHeaders(
-    authenticated: boolean = false,
+    _authenticated: boolean = false,
     customHeaders?: HeadersInit,
   ): Headers {
     const headers = new Headers(customHeaders);
 
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
-    }
-
-    if (authenticated) {
-      const token = localStorage.getItem("token");
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
     }
 
     return headers;

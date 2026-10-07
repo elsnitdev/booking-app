@@ -28,8 +28,6 @@ export default function Navbar() {
     } catch (error) {
       console.error("Lỗi khi đăng xuất từ server:", error);
     } finally {
-      // 2. Dù API thành công hay gặp lỗi mạng, phía Client vẫn chủ động dọn dẹp
-      localStorage.removeItem("token");
       setIsLoggedIn(false);
       toast.success("Đã đăng xuất thành công!");
       navigate("/login");
